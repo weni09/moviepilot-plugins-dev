@@ -31,7 +31,7 @@
                   {{ (item.client || '').slice(0, 2) }}
                   </v-chip>
                   <span style="margin-left: 8px;">{{ item.name }}</span>
-                  <v-btn icon="mdi-content-copy" size="x-small" @click.stop="copyPath(item.path)" style="margin-left: 8px;"></v-btn>
+                  <v-btn icon="mdi-content-copy" size="x-small" @click.stop="_copyPath(item.path)" style="margin-left: 8px;"></v-btn>
                  </div>
                 </template>
              <span>{{ item.path }}</span> <!-- 提示显示完整路径 -->
@@ -85,7 +85,7 @@
 <script setup lang="ts">
 import { computed ,reactive} from 'vue';
 import {CombinedItem,ONLY_TORRENT,formatBytes,
-  SnackbarModel,ALL} from './definedFunctions.ts';
+  SnackbarModel,ALL,copyPath} from './definedFunctions.ts';
 
 interface StateModel{
   cleanupList: CombinedItem[]
@@ -182,38 +182,15 @@ const showNotification = (text, color = 'success')=> {
   state.snackbar.color = color;
   state.snackbar.show = true;
 }
-const copyPath = async (path: string) => {
-  // 先判断 clipboard API 是否可用
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(path);
-      showNotification("路径已复制到剪贴板");
-    } catch (err) {
-      console.error("复制路径失败",err)
-      showNotification("复制路径失败", "error");
-    }
-  } else {
-    // 兼容方案：使用 textarea + execCommand
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = path;
-      textarea.style.position = 'fixed'; // 防止滚动跳动
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      const successful = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      if (successful) {
-        showNotification("路径已复制到剪贴板");
-      } else {
-        showNotification("复制路径失败", "error");
-      }
-    } catch (err) {
-      console.error("兼容方案:复制路径失败",err)
-      showNotification("复制路径失败", "error");
-    }
+const _copyPath = async (path: string) => {
+  showNotification("路径已复制到剪贴板");
+  if (await copyPath(path)){
+    showNotification("路径已复制到剪贴板");
+  }else{
+    showNotification("复制路径失败","error");
   }
 };
+
 const getCleanupList = ()=>{
   return state.cleanupList
 }
@@ -232,5 +209,9 @@ defineExpose({
 .name-column {
   width: 40rem !important;
   max-width: 40rem !important;
+  & .name-text{
+    margin-left: 8px;
+    max-width: 35rem;
+  }
 }
 </style>

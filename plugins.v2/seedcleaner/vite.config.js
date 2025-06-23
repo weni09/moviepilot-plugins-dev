@@ -1,12 +1,12 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import federation from '@originjs/vite-plugin-federation'
-import vuetify from 'vite-plugin-vuetify' // 添加这行
+// import vuetify from 'vite-plugin-vuetify' // 添加这行
 
 export default defineConfig({
   plugins: [
     vue(),
-    vuetify(), // 添加 Vuetify 插件
+    // vuetify(), // 添加 Vuetify 插件
     federation({
       name: 'SeedCleaner',
       filename: 'remoteEntry.js',
@@ -57,19 +57,19 @@ export default defineConfig({
             }
           }
         },
-        // {
-        //   postcssPlugin: 'vuetify-filter',
-        //   Root(root) {
-        //     // 过滤掉所有vuetify相关的CSS
-        //     root.walkRules(rule => {
-        //       if (rule.selector && (
-        //           rule.selector.includes('.v-') ||
-        //           rule.selector.includes('.mdi-'))) {
-        //         rule.remove();
-        //       }
-        //     });
-        //   }
-        // }
+        {
+          postcssPlugin: 'vuetify-filter',
+          Root(root) {
+            // 过滤掉所有vuetify相关的CSS
+            root.walkRules(rule => {
+              if (rule.selector && (
+                  rule.selector.includes('.v-') ||
+                  rule.selector.includes('.mdi-'))) {
+                rule.remove();
+              }
+            });
+          }
+        }
       ]
     }
   },

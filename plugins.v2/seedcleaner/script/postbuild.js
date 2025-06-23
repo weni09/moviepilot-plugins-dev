@@ -13,6 +13,8 @@ const patterns = [
   'dist/assets/*.woff*',
   'dist/assets/*.ttf',
   'dist/assets/*.eot',
+  'dist/assets/index-*',
+  'dist/assets/date-*',
 ];
 
 async function cleanUp() {
@@ -29,13 +31,13 @@ async function cleanUp() {
   }
 
   // ✅ 可选：删除空目录本身
-  // const dirToRemove = join(distDir, '../dist/assets/__federation_shared_vuetify');
-  // try {
-  //   await rimraf(dirToRemove);
-  //   console.log(`已删除目录: ${dirToRemove}`);
-  // } catch (err) {
-  //   console.warn(`无法删除目录: ${dirToRemove}`, err.message);
-  // }
+  const dirToRemove = join(distDir, '../dist/assets/__federation_shared_vuetify');
+  try {
+    await rimraf(dirToRemove);
+    console.log(`已删除目录: ${dirToRemove}`);
+  } catch (err) {
+    console.warn(`无法删除目录: ${dirToRemove}`, err.message);
+  }
 }
 
 cleanUp();

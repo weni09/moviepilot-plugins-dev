@@ -1,3 +1,6 @@
+
+import {trackerMapping} from "./trackerMapping";
+
 // Define Anchor type locally if needed
 type Anchor = 'top' | 'bottom' | 'left' | 'right' | 'center';
 
@@ -17,6 +20,63 @@ export function formatBytes(a: number, b: number = 2) {
     return parseFloat((a / Math.pow(c, f)).toFixed(d)) + " " + e[f];
 }
 
+
+export const copyPath = async (path: string) => {
+  if (window.isSecureContext && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(path);
+      return true;
+    } catch (err) {
+      console.error("现代剪贴板API复制失败", err);
+      return false
+    }
+  }
+  // 使用兼容方案并防止滚动跳动
+  const textArea = document.createElement("textarea");
+  textArea.value = path;
+  Object.assign(textArea.style, {
+    position: "absolute",
+    left: "-9999px",
+    top: "-9999px",
+    opacity: "0"
+  });
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand("copy");
+    return true;
+  } catch (err) {
+    console.error("兼容方案复制失败", err);
+    return false
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
+export const mapTrackers = (trackers: string[]): string[] => {
+  if (!Array.isArray(trackers)) return [];
+  return trackers.map((tracker) => {
+
+    if (trackerMapping[tracker]){
+      return trackerMapping[tracker];
+    }
+    // 去除协议部分（如果存在）
+    let hostname = tracker.replace(/^[a-zA-Z0-9+.-]+:\/{2}/, '');
+    // 去除路径、端口等，只保留主机名
+    hostname = hostname.split('/')[0].split(':')[0];
+    // 分割域名
+    const parts = hostname.split('.');
+    // 用各部分匹配
+    for (let part of parts){
+      if (trackerMapping[part]){
+        return trackerMapping[part];
+     }
+    }
+    // 无法匹配时返回原值
+    return tracker;
+  });
+};
 
 export interface ApiRequest {
   get: <T>(url: string, config?: any) => Promise<T>;

@@ -41,7 +41,7 @@
       ></v-pagination>
     </v-card-title>
     <v-card-text class="pa-0">
-      <v-table fixed-header height="320px" density="compact" hover>
+      <v-table fixed-header height="420px" density="compact" hover>
         <thead>
         <tr>
           <th class="text-left">
@@ -69,7 +69,8 @@
                   v-if="item.hasOwnProperty('client') && item.client">
                   {{ (item.client || '').slice(0, 2) }}
                   </v-chip>
-              <span style="margin-left: 8px;">{{ item.name }}</span>
+               <span class="name-text">{{ item.name }}</span>
+              <v-btn icon="mdi-content-copy" size="x-small" @click.stop="_copyPath(item.path)" style="margin-left: 8px;"></v-btn>
              </div>
             </template>
              <span>{{ item.path }}</span> <!-- 提示显示完整路径 -->
@@ -77,9 +78,21 @@
         </td>
           <template v-if="item.type === 'torrent'">
             <td>
-              {{item.trackers.length > 0
-                ? item.trackers.join(', ')
-                : '无 Tracker'}}
+              <div v-if="item.trackers.length > 0">
+              <v-chip
+                :color="getColorByString(item.trackers)"
+                text-color="white"
+                size="small"
+                class="mr-1 mb-1"
+              >
+                {{ mapTrackers(item.trackers)[0] }}
+              </v-chip>
+              </div>
+              <div v-else>
+                <v-chip color="info" text-color="white" size="small">
+                  无 Tracker
+                </v-chip>
+              </div>
             </td>
             <td>
               <v-chip
@@ -92,7 +105,11 @@
             </td>
           </template>
           <template v-else-if="item.type === 'file'">
-            <td>无 Tracker</td>
+            <td> 
+              <v-chip color="info" text-color="white" size="small">
+                  无 Tracker
+                </v-chip>
+              </td>
             <td>
               <v-chip color="warning" size="small" text-color="white">缺失种子</v-chip>
             </td>
@@ -102,16 +119,24 @@
         </tbody>
       </v-table>
     </v-card-text>
+     <v-snackbar v-model="state.snackbar.show"
+                :timeout="3000"
+                :color="state.snackbar.color"
+                :location="state.snackbar.location"
+    >
+      {{ state.snackbar.message }}
+    </v-snackbar>
   </v-card>
 </template>
 
 <script setup lang="ts">
 import {ref, computed, reactive} from 'vue';
 import type {PropType} from 'vue';
-import {formatBytes, CombinedItem, ScanResult} from "./definedFunctions";
+import {formatBytes, SnackbarModel, ScanResult,copyPath,mapTrackers} from "./definedFunctions";
 
 interface StateModel {
   selectedScans: string[]
+  snackbar:SnackbarModel
 }
 
 const props = defineProps({
@@ -144,7 +169,12 @@ const emit = defineEmits(['deleteAllRecord', 'addToCleanup', 'update:scanParams'
 
 const state = reactive<StateModel>({
   selectedScans: [],
-
+    snackbar: {
+    location:'top',
+    show: false,
+    message: '',
+    color: 'success'
+ }
 })
 // 计算总数和缺失文件数量
 const totalComputed = computed(() => {
@@ -181,6 +211,12 @@ const selectAllScans = computed({
   }
 });
 
+// 消息通知
+const showNotification = (text, color = 'success')=> {
+  state.snackbar.message = text;
+  state.snackbar.color = color;
+  state.snackbar.show = true;
+}
 
 const deleteAllRecord = () => {
   state.selectedScans = []
@@ -212,6 +248,30 @@ const handlePageChange = (newPage: number) => {
 const clearSelectedScans = ()=>{
   state.selectedScans = [];
 }
+
+const _copyPath = async (path: string) => {
+  showNotification("路径已复制到剪贴板");
+  if (await copyPath(path)){
+    showNotification("路径已复制到剪贴板");
+  }else{
+    showNotification("复制路径失败","error");
+  }
+};
+
+const availableColors = ['primary', 'secondary', 'success', 'info', 'warning', 'error', 'accent'];
+
+// 根据字符串生成颜色索引
+const getColorByString = (strs: string[]): string => {
+  let strsArray = strs.sort()
+  let _strs = strsArray.join("");
+  let hash = 0;
+  for (let i = 0; i < _strs.length; i++) {
+    hash = _strs.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash % availableColors.length);
+  return availableColors[index];
+};
+
 defineExpose({
   clearSelectedScans,
   
@@ -225,5 +285,9 @@ defineExpose({
 .name-column {
   width: 40rem !important;
   max-width: 40rem !important;
+  & .name-text{
+    margin-left: 8px;
+    max-width: 35rem;
+  }
 }
 </style>
