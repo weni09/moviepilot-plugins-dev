@@ -1,31 +1,20 @@
 <template>
   <v-card flat class="mb-4">
     <v-card-title class="text-subtitle-1 d-flex align-center px-3 py-2 bg-primary-lighten-5">
-      <span>扫描记录</span>
-      <v-btn color="primary"
-             @click="deleteAllRecord"
-             class="ml-2"
-             prepend-icon="mdi-magnify"
-             size="small">清空记录
-      </v-btn>
-      <v-btn color="success"
-             @click="addToCleanup"
-             class="ml-2"
-             prepend-icon="mdi-plus-box"
-             size="small">添加到待清理
-      </v-btn>
-       <v-chip class="ml-2" size="x-small" color="info" variant="flat" v-if="totalComputed!=''">
-        {{ totalComputed }}
-      </v-chip>
-      <v-chip class="ml-2" size="x-small" color="error" variant="flat">
-        {{ `已选择 ${state.selectedScans.length}项` }}
-      </v-chip>
-      <v-spacer/>
+      <div class="d-flex align-center mr-4">
+        <v-chip class="ml-2" size="x-small" color="info" variant="flat" v-if="totalComputed!=''">
+          {{ totalComputed }}
+        </v-chip>
+        <v-chip class="ml-2" size="x-small" color="error" variant="flat">
+          {{ `已选择 ${state.selectedScans.length}项` }}
+        </v-chip>
+        </div>
+         <v-spacer />
       <v-select
           v-model="scanParams.pageSize"
           :items="[50, 100, 200, 300, 500]"
           label="每页数量"
-          variant="outlined"
+          variant="underlined"
           density="compact"
           size="small"
           style="max-width: 120px;"
@@ -37,87 +26,143 @@
           @update:modelValue="handlePageChange"
           rounded="circle"
           size="small"
+          class="mr-8"
           :total-visible="5"
       ></v-pagination>
+     
+      <v-btn color="primary"
+             @click="deleteAllRecord"
+             class="mr-4"
+             icon
+             size="small">
+             <v-icon icon="mdi-broom" size="small"/>
+             <v-tooltip activator="parent" location="top">清空记录</v-tooltip>
+      </v-btn>
+      <v-btn color="success"
+             @click="addToCleanup"
+             icon
+             size="small"
+             class="mr-4"
+             >
+              <v-icon icon="mdi-plus-box" size="small"/>
+             <v-tooltip activator="parent" location="top">添加到待清理</v-tooltip>
+      </v-btn>
     </v-card-title>
     <v-card-text class="pa-0">
-      <v-table fixed-header height="420px" density="compact" hover>
-        <thead>
-        <tr>
-          <th class="text-left">
-            <v-checkbox v-model="selectAllScans" hide-details/>
-          </th>
-          <th class="text-left name-column">名称</th>
-          <th class="text-left">Tracker</th>
-          <th class="text-left">状态</th>
-          <th class="text-left size-column">大小</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="item in props.scanRes.combinedList" :key="item.hash">
-          <td>
-            <v-checkbox v-model="state.selectedScans" :value="item.hash" hide-details/>
-          </td>
-          <td class="name-column" >
-            <v-tooltip location="bottom">
-              <template #activator="{ props }">
-               <div v-bind="props" style="display: flex; align-items: center;">
-                 <v-chip 
-                  :color="item.hasOwnProperty('client') && item.client === 'transmission' ? 'primary' : 'error'"
-                  size="small" 
-                  text-color="white"
-                  v-if="item.hasOwnProperty('client') && item.client">
-                  {{ (item.client || '').slice(0, 2) }}
-                  </v-chip>
-               <span class="name-text">{{ item.name }}</span>
-              <v-btn icon="mdi-content-copy" size="x-small" @click.stop="_copyPath(item.path)" style="margin-left: 8px;"></v-btn>
-             </div>
-            </template>
-             <span>{{ item.path }}</span> <!-- 提示显示完整路径 -->
-           </v-tooltip>
-        </td>
-          <template v-if="item.type === 'torrent'">
-            <td>
-              <div v-if="item.trackers.length > 0">
-              <v-chip
-                :color="getColorByString(item.trackers)"
-                text-color="white"
-                size="small"
-                class="mr-1 mb-1"
-              >
-                {{ mapTrackers(item.trackers)[0] }}
-              </v-chip>
-              </div>
-              <div v-else>
-                <v-chip color="info" text-color="white" size="small">
-                  无 Tracker
-                </v-chip>
-              </div>
-            </td>
-            <td>
-              <v-chip
-                  :color="item.data_missing ? 'error' : 'success'"
-                  size="small"
-                  text-color="white"
-              >
-                {{ item.data_missing ? '缺失源文件' : '包含源文件' }}
-              </v-chip>
-            </td>
-          </template>
-          <template v-else-if="item.type === 'file'">
-            <td> 
-              <v-chip color="info" text-color="white" size="small">
-                  无 Tracker
-                </v-chip>
+      <v-data-table-server
+        :headers="state.headers"
+        :hide-default-header="false"
+        :items="props.scanRes.combinedList"
+        :items-per-page="scanParams.pageSize"
+        :page="scanParams.page"
+        :item-count="props.scanRes.total"
+        :items-length="props.scanRes.total"
+        :sort-by.sync="props.scanParams.sortBy"
+        :item-value="item => item.hash"
+        :loading="props.loading"
+        v-model="state.selectedScans"
+        must-sort
+        fixed-header
+        height="420px"
+        density="default"
+        hover
+        hide-default-footer
+        show-expand
+        show-select
+        expand-on-click
+        @update:sortBy="handleSortChange"
+        @update:page="handlePageChange"
+        @update:items-per-page="handlePageSizeChange">
+  <template #loading>
+        <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
+  </template>
+  <template #item.name="{ item }">
+    <v-tooltip location="bottom">
+      <template #activator="{ props }">
+        <div v-bind="props" style="display: flex; align-items: center;">
+          <v-chip
+            :color="item.hasOwnProperty('client') && item.client === 'transmission' ? 'primary' : 'error'"
+            size="small"
+            text-color="white"
+            v-if="item.hasOwnProperty('client') && item.client">
+            {{ (item.client || '').slice(0, 2) }}
+          </v-chip>
+          <span class="name-text">{{ item.name }}</span>
+          <v-btn icon="mdi-content-copy" size="x-small" @click.stop="_copyPath(item.path)" style="margin-left: 8px;"></v-btn>
+        </div>
+      </template>
+      <span>{{ item.path }}</span> <!-- 提示显示完整路径 -->
+    </v-tooltip>
+  </template>
+  <template #item.tracker="{ item }">
+    <div v-if="item.type === 'torrent' && item?.trackers.length > 0">
+      <v-chip
+        :color="getColorByString(item.trackers)"
+        text-color="white"
+        size="small"
+        class="mr-1 mb-1"
+      >
+        {{ mapTrackers(item.trackers)[0] }}
+      </v-chip>
+    </div>
+    <div v-else>
+      <v-chip color="info" text-color="white" size="small">
+        无 Tracker
+      </v-chip>
+    </div>
+  </template>
+  <template #item.status="{ item }">
+    <v-chip
+      :color="item.data_missing ? 'error' : 'success'"
+      size="small"
+      text-color="white"
+      v-if="item.type === 'torrent'"
+    >
+      {{ item.data_missing ? '缺失源文件' : '包含源文件' }}
+    </v-chip>
+     <v-chip color="warning" 
+     size="small" 
+     text-color="white" 
+     v-else-if="item.type === 'file'"> 缺失种子
+    </v-chip>
+  </template>
+
+  <template #item.size="{ item }">
+    {{ item.size ? `${formatBytes(item.size)}` : '未知大小' }}  
+  </template>
+  <template #expanded-row="{ item }">
+    <tr>
+      <td colspan="100%">
+        <v-table density="compact">
+          <thead>
+            <tr>
+              <th class="text-left">
+                Hash
+              </th>
+              <th class="text-left">
+                客户端名称
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left">
+                  {{ item.hash }}
               </td>
-            <td>
-              <v-chip color="warning" size="small" text-color="white">缺失种子</v-chip>
-            </td>
-          </template>
-          <td class="size-column">{{ item.size ? `${formatBytes(item.size)}` : '未知大小' }}</td>
-        </tr>
-        </tbody>
-      </v-table>
+              <td class="text-left">
+                  {{ `${item.type == 'torrent'?item.client_name:'-' }`}}
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </td>
+    </tr>
+  </template>
+  <template #item.select="{ item }">
+    <v-checkbox v-model="state.selectedScans" :value="item.hash" hide-details/>
+  </template>
+
+</v-data-table-server>
     </v-card-text>
      <v-snackbar v-model="state.snackbar.show"
                 :timeout="3000"
@@ -130,13 +175,15 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, reactive} from 'vue';
+import {ref, computed, reactive, watch} from 'vue';
 import type {PropType} from 'vue';
-import {formatBytes, SnackbarModel, ScanResult,copyPath,mapTrackers} from "./definedFunctions";
+import {formatBytes, SnackbarModel, ScanResult,copyPath,mapTrackers,SortItem} from "./definedFunctions";
+
 
 interface StateModel {
   selectedScans: string[]
   snackbar:SnackbarModel
+  headers:any[]
 }
 
 const props = defineProps({
@@ -151,19 +198,25 @@ const props = defineProps({
       pageSize: 50
     })
   },
+  // 将sortBy改为字符串类型，避免直接传递SortItem数组
   scanParams: {
     type: Object as PropType<{
       page: number;
       pageSize: number;
+      sortBy: SortItem[];
     }>,
     required: true,
     default: () => ({
       page: 1,
-      pageSize: 50
+      pageSize: 50,
+      sortBy: []
     })
-  }
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
 });
-
 
 const emit = defineEmits(['deleteAllRecord', 'addToCleanup', 'update:scanParams']);
 
@@ -174,7 +227,14 @@ const state = reactive<StateModel>({
     show: false,
     message: '',
     color: 'success'
- }
+ },
+ headers: [
+      { value: 'expand', title: '',key:"data-table-expand"},
+      { value: 'name', title: '名称',align:"center", sortable: true,maxWidth:"40rem", },
+      { value: 'tracker', title: 'Tracker',align:"center", },
+      { value: 'status', title: '状态' ,align:"center",},
+      { value: 'size', title: '大小', sortable: true,align:"center", },
+      { value: 'select', title: '',key:"data-table-select"}]
 })
 // 计算总数和缺失文件数量
 const totalComputed = computed(() => {
@@ -231,20 +291,34 @@ const totalPages = computed(() => {
      return Math.ceil(props.scanRes.total / props.scanParams.pageSize);
 });
 
+// 页码改变
 const handlePageChange = (newPage: number) => {
   emit('update:scanParams', {
     pageSize: props.scanParams.pageSize,
     page: newPage,
+    sort: props.scanParams.sortBy,
     changed:"page"
   });
 };
+// 分页数改变
  const handlePageSizeChange = (newPageSize: number) => {
      emit('update:scanParams', {
        pageSize: newPageSize,
        page: 1, // 切换每页数量后跳转到第一页
+       sort: props.scanParams.sortBy,
        changed:"pageSize"
      });
    };
+// 排序改变
+const handleSortChange = (items:any)=>{
+  console.log("handleSortChange",items)
+  emit('update:scanParams', {
+    pageSize: props.scanParams.pageSize,
+    page: props.scanParams.page, // 切换每页数量后跳转到第一页
+    sort: items,
+    changed:"sort"
+  });
+}
 const clearSelectedScans = ()=>{
   state.selectedScans = [];
 }

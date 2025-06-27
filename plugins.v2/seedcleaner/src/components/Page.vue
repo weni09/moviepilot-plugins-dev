@@ -3,68 +3,83 @@
     <v-card flat class="rounded border">
       <v-card-title class="text-subtitle text-subtitle-1 d-flex align-center px-3 py-2 bg-primary-lighten-5">
         <v-icon icon="mdi-tools" class="mr-2" color="primary" size="small"/>
-        <span>种子清理工-详情</span>
+        <span>种子清理工</span>
+        <v-card-subtitle class="ml-2">详情页</v-card-subtitle>
+        <v-spacer/>
+        <v-btn color="success"
+               icon
+               @click="switch_tab('config')"
+               variant="tonal"
+               :disabled="state.scaning || state.clearing"
+               size="small"
+               class="mr-4">
+               <v-icon icon="mdi-cog" size="small"/>
+               <v-tooltip activator="parent" location="top">配置页</v-tooltip>
+        </v-btn>
+        <v-btn color="primary"
+               @click="close"
+               icon
+               :disabled="state.scaning || state.clearing"
+               variant="tonal"
+               size="small"
+               class="mr-4"
+               >
+                <v-icon icon="mdi-close" size="small"/>
+               <v-tooltip activator="parent" location="top">关闭</v-tooltip>
+        </v-btn>
       </v-card-title>
 
       <!-- 工具条区域 -->
       <ToolBar ref="toolbarRef"/>
       <v-divider/>
-      <!-- 按钮操作区域 -->
-      <v-card-actions class="plugin-page__actions pr-15">
-        <v-btn color="primary"
-               @click="startScan(false)"
-               prepend-icon="mdi-magnify"
-               variant="text"
-               :disabled="state.clearing"
-               :loading="state.scaning"
-               class="ml-2">开始扫描
-        </v-btn>
-        <v-divider vertical></v-divider>
-        <v-btn
-            color="warning"
-            @click="resetParams"
-            prepend-icon="mdi-refresh"
-            variant="text"
-            :disabled="state.scaning || state.clearing"
-            class="ml-2">重置选项
-        </v-btn>
-        <v-divider vertical></v-divider>
-        <v-btn color="error"
-               @click="startCleanup"
-               prepend-icon="mdi-trash-can-outline"
-               variant="text"
-               :disabled="state.scaning"
-               :loading="state.clearing"
-               class="ml-2">开始清理
-        </v-btn>
-        <v-divider vertical></v-divider>
-        <v-spacer/>
-        <v-btn color="success"
-               @click="switch_tab('config')"
-               prepend-icon="mdi-cog"
-               variant="text"
-               :disabled="state.scaning || state.clearing"
-               class="ml-2">配置页
-        </v-btn>
-        <v-divider vertical/>
-        <v-btn color="grey"
-               @click="close"
-               prepend-icon="mdi-close"
-               :disabled="state.scaning || state.clearing"
-               variant="text"
-               size="small">关闭清理工
-        </v-btn>
-      </v-card-actions>
       <!-- 动态组件区域 -->
       <!-- 选项卡标题 -->
-      <v-card flat class="rounded border">
-        <v-card-title class="text-subtitle text-subtitle-2 d-flex align-center px-3 py-2 bg-primary-lighten-5">
+      <v-card flat class="px-2 py-1">
+        <v-card-title class="text-subtitle-2 d-flex align-center px-3 py-2 bg-primary-lighten-5">
           <v-icon icon="mdi-list-box" class="mr-2" color="primary" size="small"/>
           <span>列表区域</span>
+          <v-spacer/>
+          <div class="d-flex">
+            <v-btn color="primary"
+               @click="startScan(false)"
+               icon
+               variant="tonal"
+               :disabled="state.clearing"
+               :loading="state.scaning"
+               size="small"
+               class="ml-4 mr-4">
+               <v-icon icon="mdi-magnify" size="small"/>
+               <v-tooltip activator="parent" location="top">开始扫描</v-tooltip>
+            </v-btn>
+            <v-btn
+                color="warning"
+                @click="resetParams"
+                icon
+                variant="tonal"
+                :disabled="state.scaning || state.clearing"
+                size="small"
+                class="mr-4">
+              <v-icon icon="mdi-refresh" size="small"/>
+              <v-tooltip activator="parent" location="top">重置选项</v-tooltip>
+            </v-btn>
+            <v-btn color="error"
+               @click="startCleanup"
+               icon
+               variant="tonal"
+               :disabled="state.scaning"
+               :loading="state.clearing"
+               class="mr-4" size="small">
+               <v-icon icon="mdi-trash-can-outline" size="small"/>
+               <v-tooltip activator="parent" location="top">开始清理</v-tooltip>
+            </v-btn>
+          </div>
+          <div>
+
+          </div>
         </v-card-title>
         <v-tabs v-model="state.listTab" grow>
           <v-tab value="scan" @click="setTab('scan')">扫描结果</v-tab>
-          <v-tab value="cleanup" @click="setTab('cleanup')">待清理列表</v-tab>
+          <v-tab value="cleanup" @click="setTab('cleanup')">待清理</v-tab>
         </v-tabs>
         <!-- <component :is="currentTabComponent"/> -->
         <ScanResults v-show="state.listTab == 'scan'"
@@ -72,6 +87,7 @@
                      @delete-all-record="deleteAllRecord"
                      @add-to-cleanup="addToCleanup"
                      :scan-params="state.scanParams"
+                     :loading="state.scaning"
                      @update:scanParams="handleScanParamsUpdate"
                      ref="scanResultsRef"
         />
@@ -94,7 +110,7 @@ import {reactive, ref, Ref} from 'vue';
 import ToolBar from './ToolBar.vue';
 import ScanResults from './ScanResults.vue';
 import CleanupList from './CleanupList.vue';
-import {PLUGIN_ID, SnackbarModel, CombinedItem, ScanResult,ApiRequest} from './definedFunctions.ts';
+import {PLUGIN_ID, SnackbarModel, CombinedItem, ScanResult,ApiRequest,SortItem} from './definedFunctions.ts';
 
 
 const emit = defineEmits(['close', 'switch']);
@@ -120,6 +136,7 @@ interface PageState {
   scanParams: {
     page: number;
     pageSize: number;
+    sortBy: SortItem[];
   },
   snackbar: SnackbarModel
 }
@@ -144,6 +161,7 @@ const state = reactive<PageState>({
   scanParams: {
     page: 1,
     pageSize: 50,
+    sortBy: [{key: 'name', order: 'asc'}],
   },
   snackbar: {
     location: 'top',
@@ -174,7 +192,7 @@ const initData = ()=>{
   state.scanRes.mTotal = 0;
   scanResultsRef.value.clearSelectedScans(); // 清除选中的扫描结果
 }
-const startScan = (isPageChange:boolean=false,isPageSizeChange:boolean=false) => {
+const startScan = (isPageChange:boolean=false,isPageSizeChange:boolean=false,isSortChanged:boolean=false) => {
   // 触发开始扫描逻辑
   console.log('开始扫描', `扫描参数: ${toolbarRef.value.state},isPageChange: ${isPageChange}`);
   state.scaning = true;
@@ -185,8 +203,12 @@ const startScan = (isPageChange:boolean=false,isPageSizeChange:boolean=false) =>
 
 
   // 这里可以调用 API 或其他逻辑来执行扫描
-  let url = `plugin/${PLUGIN_ID}/scan?page=${state.scanParams.page}&limit=${state.scanParams.pageSize}&pageChange=${isPageChange}&pageSizeChange=${isPageSizeChange}`
-  props.api.post(url, toolbarRef.value.state).then(res => {
+  let url = `plugin/${PLUGIN_ID}/scan?pageChange=${isPageChange}&pageSizeChange=${isPageSizeChange}&sortChange=${isSortChanged}`
+  const params = {...toolbarRef.value.state}
+  params["page"] = state.scanParams.page
+  params["limit"] = state.scanParams.pageSize
+  params["sortBy"] = [state.scanParams.sortBy[0].key,state.scanParams.sortBy[0].order]
+  props.api.post(url, params).then(res => {
     state.scanRes.combinedList = res.data.combined_list || [];
     state.scanRes.total = res.data.total || 0; 
     state.scanRes.tTotal = res.data.t_total || 0;
@@ -263,18 +285,36 @@ const startCleanup = () => {
   })
 
 };
-const handleScanParamsUpdate = (newScanParams: { page: number; pageSize: number, changed:string }) => {
+const handleScanParamsUpdate = (newScanParams: { page: number; pageSize: number,
+                              sort: [{key:string,order: boolean | "desc" | "asc" | undefined}], changed:string }) => {
   let isPageChanged = false
   let isPageSizeChanged = false
+  let isSortChanged = false;
   if (newScanParams.changed === 'page') {
     isPageChanged = true;
   } else if (newScanParams.changed === 'pageSize') {
     isPageSizeChanged = true;
+  } else if (newScanParams.changed === 'sort') {
+    isSortChanged = true;
   }
-  state.scanParams.page = Number(newScanParams.page);
-  state.scanParams.pageSize = Number(newScanParams.pageSize);
+  if (isPageChanged) {
+    // 如果是页码变更，更新页码
+    state.scanParams.page = Number(newScanParams.page);
+  } else if (isPageSizeChanged) {
+    // 如果是页大小变更，更新页大小
+      state.scanParams.pageSize = Number(newScanParams.pageSize);
+  }
+  // 修复类型不匹配问题，创建符合SortItem接口定义的对象数组
+  if (isSortChanged){
+    const sortItem: SortItem = {
+          key: newScanParams.sort[0].key,
+          order: newScanParams.sort[0].order as ("desc" | "asc" | undefined)
+        };
+    state.scanParams.sortBy = [sortItem];
+  }
+   
   // 调用 API 或方法加载新页面的数据
-  startScan(isPageChanged,isPageSizeChanged);
+  startScan(isPageChanged,isPageSizeChanged, isSortChanged);
 };
 
 </script>
@@ -302,6 +342,8 @@ const handleScanParamsUpdate = (newScanParams: { page: number; pageSize: number,
 }
 
 .text-subtitle-2 {
-  font-size: 1.0rem !important;
+  font-size: 0.9rem !important;
+  font-weight: 500;
+  margin-bottom: 2px;
 }
 </style>

@@ -1,11 +1,19 @@
 <template>
   <v-card flat>
     <v-card-title class="text-subtitle-1 d-flex align-center px-3 py-2 bg-primary-lighten-5">
-      <span>待清理记录列表</span>
+      
       <v-chip class="ml-2" size="x-small" color="error" variant="flat">
         数量：{{ state.cleanupList.length }}, 总大小：{{ totalSize }}
       </v-chip>
-      <v-btn color="primary" @click="deleteAllRecord" class="ml-2" prepend-icon="mdi-magnify" size="small">清空记录</v-btn>
+      <v-spacer/>
+            <v-btn color="primary"
+             @click="deleteAllRecord"
+             class="mr-4"
+             icon
+             size="small">
+             <v-icon icon="mdi-broom" size="small"/>
+             <v-tooltip activator="parent" location="top">清空记录</v-tooltip>
+      </v-btn>
     </v-card-title>
     <v-card-text class="pa-0">
       <v-table fixed-header height="300px" hover>

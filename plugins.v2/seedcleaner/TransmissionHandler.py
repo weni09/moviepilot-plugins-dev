@@ -83,7 +83,7 @@ class TransmissionHandler:
                     file_count=len(files),
                     first_file=(files[0]['name'], files[0]['size']),
                     end_file=(files[-1]['name'], files[-1]['size']),
-                    data_missing=not data_path.exists()
+                    data_missing=(not data_path.exists()) and not Path(str(data_path)+".part").exists()
                 )
             logger.info(f"下载器 '{self.name}' (类型:{TRANSMISSION}) 获取种子: {len(torrents_info)} 个")
             return torrents_info

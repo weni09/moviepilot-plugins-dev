@@ -142,3 +142,5 @@ export interface DownloaderModel {
   system: DownloaderInfoModel[];
   custom: DownloaderInfoModel[];
 }
+
+export type SortItem = { key: string, order?: boolean | 'asc' | 'desc' }

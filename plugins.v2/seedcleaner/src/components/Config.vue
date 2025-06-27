@@ -4,7 +4,28 @@
       <!-- 标题 -->
       <v-card-title class="text-subtitle-1 d-flex align-center px-3 py-2 bg-primary-lighten-5">
         <v-icon icon="mdi-cog" class="mr-2" color="primary" size="small"/>
-        <span>种子清理工-配置</span>
+        <span>种子清理工</span>
+        <v-card-subtitle class="ml-2">配置页</v-card-subtitle>
+        <v-spacer />
+         <v-btn color="info" 
+         @click="emit('switch','page')" 
+         icon="mdi-view-dashboard" 
+         :disabled="state.saving" 
+         variant="tonal" 
+         size="small"
+         class="mr-4"
+         >
+          <v-icon icon="mdi-view-dashboard" size="small"></v-icon>
+          <v-tooltip activator="parent" location="top">详情页</v-tooltip>
+        </v-btn>
+        <v-btn color="success" :disabled="state.saving" @click="saveFullConfig" :loading="state.saving" icon="mdi-content-save" variant="tonal" size="small"  class="mr-4">
+          <v-icon icon="mdi-content-save" size="small"/>
+          <v-tooltip activator="parent" location="top">保存配置</v-tooltip>
+        </v-btn>
+        <v-btn color="primary" @click="emit('close')" icon="mdi-close" :disabled="state.saving"  variant="tonal" size="small"  class="mr-4">
+          <v-icon icon="mdi-close" size="small" />
+          <v-tooltip activator="parent" location="top">关闭</v-tooltip>
+        </v-btn>
       </v-card-title>
 
       <v-card-text class="px-3 py-2">
@@ -169,21 +190,6 @@
           </v-row>
         </v-form>
       </v-card-text>
-
-      <v-divider></v-divider>
-      <!-- 操作按钮 -->
-      <v-card-actions class="px-2 py-1 pr-10">
-        <v-spacer />
-        <v-btn color="info" @click="emit('switch','page')" prepend-icon="mdi-view-dashboard" :disabled="state.saving" variant="text">
-          详情页
-        </v-btn>
-        <v-divider vertical></v-divider>
-        <v-btn color="primary" :disabled="state.saving" @click="saveFullConfig" :loading="state.saving" prepend-icon="mdi-content-save" variant="text" size="small">
-          保存配置
-        </v-btn>
-        <v-divider vertical></v-divider>
-        <v-btn color="grey" @click="emit('close')" prepend-icon="mdi-close" :disabled="state.saving" variant="text" size="small">关闭</v-btn>
-      </v-card-actions>
     </v-card>
 
     <!-- 提示框 -->

@@ -174,7 +174,7 @@ class QbittorrentHandler:
                 file_count=len(torrent.files),
                 first_file=first_file_tuple,
                 end_file=end_file_tuple,
-                data_missing=not data_path.exists()
+                data_missing=(not data_path.exists()) and not Path(str(data_path)+".!qB").exists()
             )
             res_dict[torrent.hash] = torrent_model
         logger.info(f"下载器 '{self.name}' (类型:{QBITTORRENT}) 获取种子: {len(res_dict)} 个")
