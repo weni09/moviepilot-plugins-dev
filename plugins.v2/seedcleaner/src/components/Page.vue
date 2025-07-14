@@ -90,6 +90,7 @@
                      :loading="state.scaning"
                      @update:scanParams="handleScanParamsUpdate"
                      ref="scanResultsRef"
+                     @applyFilter="applyFilter"
         />
         <CleanupList v-show="state.listTab == 'cleanup'" ref="cleanupRef"/>
       </v-card>
@@ -137,6 +138,9 @@ interface PageState {
     page: number;
     pageSize: number;
     sortBy: SortItem[];
+    filter:{
+      path:string;
+    }
   },
   snackbar: SnackbarModel
 }
@@ -153,8 +157,11 @@ const state = reactive<PageState>({
   scanRes: {
     combinedList: [],
     total: 0,
+    totalSize:0,
     tTotal: 0,
+    tTotalSize:0,
     mTotal: 0,
+    mTotalSize:0,
     page: 1,
     pageSize: 50
   },
@@ -162,6 +169,9 @@ const state = reactive<PageState>({
     page: 1,
     pageSize: 50,
     sortBy: [{key: 'name', order: 'asc'}],
+    filter:{
+      path:"",
+    }
   },
   snackbar: {
     location: 'top',
@@ -192,7 +202,8 @@ const initData = ()=>{
   state.scanRes.mTotal = 0;
   scanResultsRef.value.clearSelectedScans(); // 清除选中的扫描结果
 }
-const startScan = (isPageChange:boolean=false,isPageSizeChange:boolean=false,isSortChanged:boolean=false) => {
+const startScan = (isPageChange:boolean=false,isPageSizeChange:boolean=false,
+     isSortChanged:boolean=false,filterChanged:boolean=false) => {
   // 触发开始扫描逻辑
   console.log('开始扫描', `扫描参数: ${toolbarRef.value.state},isPageChange: ${isPageChange}`);
   state.scaning = true;
@@ -203,19 +214,23 @@ const startScan = (isPageChange:boolean=false,isPageSizeChange:boolean=false,isS
 
 
   // 这里可以调用 API 或其他逻辑来执行扫描
-  let url = `plugin/${PLUGIN_ID}/scan?pageChange=${isPageChange}&pageSizeChange=${isPageSizeChange}&sortChange=${isSortChanged}`
+  let url = `plugin/${PLUGIN_ID}/scan?pageChange=${isPageChange}&pageSizeChange=${isPageSizeChange}&sortChange=${isSortChanged}&filterChange=${filterChanged}`
   const params = {...toolbarRef.value.state}
   params["page"] = state.scanParams.page
   params["limit"] = state.scanParams.pageSize
   params["sortBy"] = [state.scanParams.sortBy[0].key,state.scanParams.sortBy[0].order]
+  params["filter"] = state.scanParams.filter
   props.api.post(url, params).then(res => {
     state.scanRes.combinedList = res.data.combined_list || [];
     state.scanRes.total = res.data.total || 0; 
     state.scanRes.tTotal = res.data.t_total || 0;
     state.scanRes.mTotal = res.data.m_total || 0;
+    state.scanRes.totalSize = res.data.total_size||0;
+    state.scanRes.tTotalSize = res.data.t_total_size||0;
+    state.scanRes.mTotalSize = res.data.m_total_size||0;
     state.scanRes.page = res.data.page || 1;
     state.scanRes.pageSize = res.data.page_size || 50;
-    console.log('扫描结果:', state.scanRes);
+    // console.log('扫描结果:', state.scanRes);
     // 切换到扫描结果 tab
     setTab('scan');
   }).catch(error => {
@@ -242,7 +257,7 @@ const deleteAllRecord = () => {
 };
 // 添加选中的扫描结果到待清理列表
 // cleanupList 是一个包含选中项 hash 的数组
-const addToCleanup = (cleanupList: Array<string>) => {
+const addToCleanup = (cleanupList: Array<CombinedItem>) => {
   // 将选中的扫描结果添加到待清理列表
   console.log('添加到待清理', cleanupList.length);
   if (!cleanupList || cleanupList.length == 0) {
@@ -251,12 +266,7 @@ const addToCleanup = (cleanupList: Array<string>) => {
     state.snackbar.show = true;
     return
   }
-  let willCleanupList: CombinedItem[] = []
-  for (let item of state.scanRes.combinedList) {
-    if (cleanupList.includes(item.hash)) {
-      willCleanupList.push(item)
-    }
-  }
+  let willCleanupList: CombinedItem[] = cleanupList
   cleanupRef.value.setCleanupList(willCleanupList)
 };
 
@@ -315,6 +325,14 @@ const handleScanParamsUpdate = (newScanParams: { page: number; pageSize: number,
    
   // 调用 API 或方法加载新页面的数据
   startScan(isPageChanged,isPageSizeChanged, isSortChanged);
+};
+
+// 过滤扫描
+const applyFilter = (filter: { path: string }) => {
+  // 更新过滤条件
+  state.scanParams.filter.path = filter.path;
+  // 重新开始扫描
+  startScan(false, false, false, true);
 };
 
 </script>

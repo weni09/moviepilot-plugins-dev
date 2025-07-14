@@ -26,7 +26,7 @@ class SeedCleaner(_PluginBase):
     # 插件图标
     plugin_icon = "delete.png"
     # 插件版本
-    plugin_version = "1.3.4"
+    plugin_version = "1.4.0"
     # 插件作者
     plugin_author = "weni09"
     # 作者主页
@@ -453,6 +453,10 @@ class SeedCleaner(_PluginBase):
                 tracker_list = search_info.trackerInput.split(";")
                 if not self._is_tracer_match(torrent_info, tracker_list) and key in res_dict.keys():
                     res_dict.pop(key, None)
+            # 路径左匹配，过滤
+            if search_info.filter.path:
+                if not str(Path(res_dict[key].save_path) / res_dict[key].name).startswith(search_info.filter.path):
+                    res_dict.pop(key, None)
             # 构建响应列表
             if len(res_dict) > 0 and key in res_dict.keys():
                 value = res_dict[key]
@@ -471,11 +475,11 @@ class SeedCleaner(_PluginBase):
         return res_list
 
     def start_scan(self, search_info: SearchModel, pageChange: bool = False, pageSizeChange: bool = False,
-                   sortChange: bool = False) -> ResponseModel:
+                       sortChange: bool = False, filterChange: bool = False) -> ResponseModel:
         logger.info(f"开始扫描,扫描参数:{search_info.dict()},"
                     f"pageChange:{pageChange},pageSizeChange:{pageSizeChange},sortChange:{sortChange}")
         try:
-            if pageChange or pageSizeChange or sortChange:
+            if pageChange or pageSizeChange or sortChange or filterChange:
                 torrent_all_info = self.torrent_info_dict
             else:
                 torrent_all_info = self.get_all_torrent_info(search_info)
@@ -494,6 +498,9 @@ class SeedCleaner(_PluginBase):
             return ResponseFailedModel(message="种子信息处理失败")
         # 结构统一化
         combined = res_list + missingFiles
+        torrent_files_size = sum([x["size"] for x in res_list if not x["data_missing"]])
+        missing_files_size = sum([x["size"] for x in missingFiles])
+        total_size = torrent_files_size + missing_files_size
         total = len(combined)
         sort_name = search_info.sortBy[0]
         sort_order = search_info.sortBy[1]
@@ -503,8 +510,11 @@ class SeedCleaner(_PluginBase):
         res = {
             "combined_list": paginated_combined,
             "total": total,
+            "total_size": total_size,
             "t_total": len(res_list),
+            "t_total_size": torrent_files_size,
             "m_total": len(missingFiles),
+            "m_total_size": missing_files_size,
             "page": search_info.page,
             "page_size": search_info.limit
         }

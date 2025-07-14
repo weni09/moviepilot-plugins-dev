@@ -30,6 +30,10 @@ class MissingOptions(BaseModel):
     file: bool = Field(default=False, description="源文件")
 
 
+class FilterModel(BaseModel):
+    path: str = ""
+
+
 class SearchModel(BaseModel):
     missingOptions: MissingOptions
     auxOption: str = "all"
@@ -40,6 +44,7 @@ class SearchModel(BaseModel):
     page: int = 1
     limit: int = 50
     sortBy: Tuple[str, str] = ("name", "asc")
+    filter: FilterModel
 
 
 class ClearModel(BaseModel):

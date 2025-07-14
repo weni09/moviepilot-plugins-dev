@@ -115,8 +115,11 @@ export type CombinedItem = TorrentItem | SourceFileItem;
 export interface ScanResult {
   combinedList: CombinedItem[];
   total: number;
+  totalSize:number;
   tTotal: number; // 种子总数
+  tTotalSize: number;
   mTotal: number; // 缺失种子的文件总数
+  mTotalSize:number;
   page: number;
   pageSize: number;
 }
