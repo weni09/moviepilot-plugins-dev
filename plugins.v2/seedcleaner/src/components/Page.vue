@@ -34,8 +34,8 @@
       <v-divider/>
       <!-- 动态组件区域 -->
       <!-- 选项卡标题 -->
-      <v-card flat class="px-2 py-1">
-        <v-card-title class="text-subtitle-2 d-flex align-center px-3 py-2 bg-primary-lighten-5">
+      <v-card flat>
+        <v-card-title class="text-subtitle-2 d-flex align-center px-2 py-1 bg-primary-lighten-5">
           <v-icon icon="mdi-list-box" class="mr-2" color="primary" size="small"/>
           <span>列表区域</span>
           <v-spacer/>
@@ -74,7 +74,6 @@
             </v-btn>
           </div>
           <div>
-
           </div>
         </v-card-title>
         <v-tabs v-model="state.listTab" grow>
@@ -88,6 +87,7 @@
                      @add-to-cleanup="addToCleanup"
                      :scan-params="state.scanParams"
                      :loading="state.scaning"
+                     :initialConfig="state.initConfig"
                      @update:scanParams="handleScanParamsUpdate"
                      ref="scanResultsRef"
                      @applyFilter="applyFilter"
@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import {reactive, ref, Ref} from 'vue';
+import {onMounted, reactive, ref, Ref} from 'vue';
 import ToolBar from './ToolBar.vue';
 import ScanResults from './ScanResults.vue';
 import CleanupList from './CleanupList.vue';
@@ -122,10 +122,6 @@ const props = defineProps({
     default: () => ({} as ApiRequest),
     required: true,
   },
-  initialConfig: {
-    type: Object,
-    default: () => ({}),
-  }
 });
 
 
@@ -140,9 +136,12 @@ interface PageState {
     sortBy: SortItem[];
     filter:{
       path:string;
+      client_name:string;
+      client:string;
     }
   },
-  snackbar: SnackbarModel
+  snackbar: SnackbarModel,
+  initConfig: Object // 初始配置
 }
 
 const toolbarRef = ref();
@@ -171,6 +170,8 @@ const state = reactive<PageState>({
     sortBy: [{key: 'name', order: 'asc'}],
     filter:{
       path:"",
+      client_name:"",
+      client:""
     }
   },
   snackbar: {
@@ -178,7 +179,8 @@ const state = reactive<PageState>({
     show: false,
     message: '',
     color: 'success'
-  }
+  },
+  initConfig:{}
 });
 
 
@@ -220,6 +222,7 @@ const startScan = (isPageChange:boolean=false,isPageSizeChange:boolean=false,
   params["limit"] = state.scanParams.pageSize
   params["sortBy"] = [state.scanParams.sortBy[0].key,state.scanParams.sortBy[0].order]
   params["filter"] = state.scanParams.filter
+  console.log("startScan",params);
   props.api.post(url, params).then(res => {
     state.scanRes.combinedList = res.data.combined_list || [];
     state.scanRes.total = res.data.total || 0; 
@@ -328,13 +331,26 @@ const handleScanParamsUpdate = (newScanParams: { page: number; pageSize: number,
 };
 
 // 过滤扫描
-const applyFilter = (filter: { path: string }) => {
+const applyFilter = (filter: { path: string,client_name:string,client:string }) => {
   // 更新过滤条件
-  state.scanParams.filter.path = filter.path;
+  state.scanParams.filter.path = filter.path || "";
+  state.scanParams.filter.client_name = filter.client_name||"";
+  state.scanParams.filter.client = filter.client||"";
   // 重新开始扫描
   startScan(false, false, false, true);
 };
 
+// 获取配置
+const getConfig = ()=>{
+  let url = `/plugin/${PLUGIN_ID}/config`;
+  props.api.get(url).then(res=>{
+    state.initConfig = res;
+  })
+}
+
+onMounted(()=>{
+  getConfig();
+})
 </script>
 <style lang="scss" scoped>
 .plugin-page {

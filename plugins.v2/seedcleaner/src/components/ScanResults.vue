@@ -1,6 +1,6 @@
 <template>
   <v-card flat class="mb-4">
-    <v-card-title class="text-subtitle-1 d-flex align-center px-3 py-2 bg-primary-lighten-5">
+    <v-card-title class="text-subtitle-1 d-flex align-center px-2 py-1 bg-primary-lighten-5">
       <div class="d-flex align-center mr-4">
         <v-chip class="ml-2" size="x-small" color="info" variant="flat" v-if="totalComputed!=''">
           {{ totalComputed }}
@@ -57,47 +57,84 @@
        </v-btn>
         <v-dialog v-model="filterDialog" max-width="400px">
           <v-card>
-            <v-card-title>条件筛选</v-card-title>
+            <v-card-title class="d-flex align-center">
+              <span>条件筛选(可选)</span>
+            </v-card-title>
             <v-card-text>
-              <v-row align="center" :gutters="1" class="d-flex align-center align-content-center">
-                <v-col cols="4"> 
-                <v-select
-                    v-model="state.filterName"
-                    :items="filterItems"
-                    variant="outlined"
-                    density="compact"
-                    class="mb-3 text-caption"
-                    hint="筛选字段名称"
-                 />
+              <v-row align="center" class="d-flex align-content-center" v-for ="(item,index) in filterItems">
+                <v-col cols="4" class="px-1"> 
+                  <span class="label-text font-weight-bold align-content-center">{{item.title}}：</span>
                 </v-col>
-               <v-col cols="8">
-                <v-text-field
-                  v-model="state.filter[state.filterName]"
-                  :label="`输入筛选${getfilterTitleByKey(state.filterName)}`"
-                  @keyup.enter="applyFilter"
-                  density="compact"
-                  autofocus
-                ></v-text-field>
+               <v-col cols="8" class="px-1" v-if="item.value==='path'">
+                  <v-text-field
+                    v-model="state.filter[item.value]"
+                    :label="`输入筛选${getfilterTitleByKey(item.value)}`"
+                    @keyup.enter="applyFilter"
+                    density="compact"
+                    variant="outlined"
+                    clearable
+                    autofocus
+                  />
+                </v-col>
+                 <v-col cols="8" class="px-1" v-else-if="item.value==='client_name'">
+                  <v-select
+                      v-model="state.filter[item.value]"
+                      :items="allDownloaders.names"
+                      :item-title="item=>item"
+                      :item-value="item=>item"
+                      :label="`选择筛选${getfilterTitleByKey(item.value)}`"
+                      variant="outlined"
+                      density="compact"
+                      class="text-caption"
+                      clearable
+                  />
+                </v-col>
+                 <v-col cols="8" class="px-1" v-else-if="item.value==='client'">
+                  <v-select
+                      v-model="state.filter[item.value]"
+                      :items="allDownloaders.types"
+                      :item-title="item=>item"
+                      :item-value="item=>item"
+                      :label="`选择筛选${getfilterTitleByKey(item.value)}`"
+                      variant="outlined"
+                      density="compact"
+                      class="text-caption"
+                      clearable
+                  />
                 </v-col>
               </v-row>
             </v-card-text>
             <v-card-actions>
-              <v-btn @click="deleteFilter(state.filterName)">取消</v-btn>
+              <v-btn @click="filterDialog = false;">取消</v-btn>
               <v-btn color="primary" @click="applyFilter">确定</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
     </v-card-title>
     <v-card-text class="pa-0">
-      <div class="filter-chips d-flex ">
-      <v-chip
-        closable
-        prepend-icon="mdi-folder-arrow-left"
-        variant="outlined"
-        @click:close="deleteFilter(state.filterName)"
-        v-if="state.filter[state.filterName]"
-      >{{ state.filter[state.filterName] }}</v-chip>
+      <div class="filter-chips d-flex justify-start px-4">
+        <template v-for="(value,key) in state.filter">
+          <v-chip
+            class="mx-2"
+            closable
+            variant="outlined"
+            @click:close="deleteFilter(key)"
+            v-if="value"
+          >
+            <template v-slot:prepend>
+             <v-tooltip location="bottom">
+                <template #activator="{ props }">
+                  <v-icon v-bind="props" v-if="key=='path'">mdi-folder-arrow-left</v-icon>
+                  <v-icon v-bind="props" v-else-if="key=='client_name'">mdi-download</v-icon>
+                  <v-icon v-bind="props"  v-else-if="key=='client'">mdi-download-circle</v-icon>
+                </template>
+                {{ getfilterTitleByKey(key) }}
+              </v-tooltip>
+            </template>
+          {{ value }}</v-chip>
+      </template>
       </div>
+      <div style="min-height: 260px; max-height: 420px; overflow-y: auto;">
       <v-data-table-server
         :headers="state.headers"
         :hide-default-header="false"
@@ -136,7 +173,7 @@
           <span class="name-text">{{ item.name }}</span>
   </template>
   <template #item.path="{ item }">
-    <span>{{ item.path.replace(item.name,"") }}</span>
+    <span>{{ item.path.replace(`/${item.name}`,"").replace(`\\${item.name}`,"") }}</span>
     <v-btn icon="mdi-content-copy" size="x-small" @click.stop="_copyPath(item.path)" style="margin-left: 8px;"></v-btn>
   </template>
   <template #item.tracker="{ item }">
@@ -185,7 +222,7 @@
                 Hash
               </th>
               <th class="text-left">
-                客户端名称
+                下载器名称
               </th>
             </tr>
           </thead>
@@ -207,7 +244,7 @@
     <v-checkbox v-model="state.selectedScans" :value="item" hide-details/>
   </template>
 
-</v-data-table-server>
+</v-data-table-server></div>
     </v-card-text>
      <v-snackbar v-model="state.snackbar.show"
                 :timeout="3000"
@@ -229,11 +266,15 @@ interface StateModel {
   selectedScans: Array<CombinedItem>; // 包含 data_missing 可选属性
   snackbar: SnackbarModel;
   headers: any[];
-  filterName: string;
   filter:Record<string,any>
+  currentFilterValues: Array<string>;
 }
 
 const props = defineProps({
+  initialConfig: {
+    type: Object,
+    default: () => ({}),
+  },
   scanRes: {
     type: Object as PropType<ScanResult>,
     default: () => ({
@@ -272,7 +313,14 @@ const emit = defineEmits(['deleteAllRecord', 'addToCleanup', 'update:scanParams'
 const filterItems = [{
   title:"路径",
   value:"path"
-}]
+  },
+  { title:"下载器名称",
+    value:"client_name",
+  },
+  { title:"下载器类型",
+    value:"client",
+  },
+]
 const state = reactive<StateModel>({
   selectedScans: [],
   snackbar: {
@@ -284,14 +332,15 @@ const state = reactive<StateModel>({
  headers: [
       { value: 'expand', title: '',key:"data-table-expand"},
       { value: 'name', title: '名称',align:"left", sortable: true,maxWidth:"20rem", },
-      { value: 'path', title: '路径',align:"left", sortable: true,maxWidth:"12rem", },
+      { value: 'path', title: '路径',align:"left", sortable: true,maxWidth:"14rem", },
       { value: 'tracker', title: 'Tracker',align:"center", },
       { value: 'status', title: '状态' ,align:"center",},
       { value: 'size', title: '大小', sortable: true,align:"center", },
       { value: 'select', title: '',key:"data-table-select"}],
-  filterName:"path",
-  filter:{}
+  filter:{},
+  currentFilterValues:["path"],
 })
+// 获取过滤项的标题通过key(value)
 const getfilterTitleByKey = (key: string) => { 
   for (let i of filterItems) {
     if (i.value === key) {
@@ -300,6 +349,23 @@ const getfilterTitleByKey = (key: string) => {
   }
   return key;
 }
+
+// 下载器名称、下载器类型列表
+const allDownloaders = computed(() => {
+  let downloaderNames = new Set([
+    ...props.initialConfig.downloaders.system.map(d => d.name),
+    ...props.initialConfig.downloaders.custom.map(d => d.name)
+  ])
+  let downloaderTypes = new Set([
+    ...props.initialConfig.downloaders.system.map(d => d.type),
+    ...props.initialConfig.downloaders.custom.map(d => d.type)
+  ])
+  return {
+    names: Array.from(downloaderNames),
+    types: Array.from(downloaderTypes)
+  };
+});
+
 
 // 计算总数和缺失文件数量
 const totalComputed = computed(() => {
@@ -318,27 +384,6 @@ const totalComputed = computed(() => {
   }
   return  res.join(' | ');
 });
-// 获取所有可选的唯一标识符（info_hash + hash），包含 data_missing
-// const allScanKeys = computed(() => {
-//   const Keys = props.scanRes.combinedList.map(item => ({
-//     hash: item.hash,
-//     size: item.size,
-//     data_missing: item.data_missing // 确保包含 data_missing 属性
-//   }));
-//   return [...Keys];
-// });
-
-// 全选状态绑定
-// const selectAllScans = computed({
-//   get: () => allScanKeys.value.length > 0 && state.selectedScans.length === allScanKeys.value.length,
-//   set: (value) => {
-//     if (value) {
-//       state.selectedScans = [...allScanKeys.value];
-//     } else {
-//       state.selectedScans = [];
-//     }
-//   }
-// });
 
 // 消息通知
 const showNotification = (text, color = 'success')=> {
@@ -435,11 +480,8 @@ const toggleFilter = () => {
 
 //应用筛选
 const applyFilter = () => {
-  console.log('应用筛选，路径包含：',state.filterName, state.filter[state.filterName]);
+  // console.log(state.filter);
   filterDialog.value = false;
-  if (!state.filter[state.filterName]){
-    return
-  }
   emit('applyFilter', state.filter)
 };
 

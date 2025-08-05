@@ -3,10 +3,10 @@
   <div class="app-container">
     <v-app>
       <v-app-bar color="primary" app>
-        <v-app-bar-title>种子清理工插件 - 本地测试</v-app-bar-title>
+        <v-app-bar-title>插件 - 本地测试</v-app-bar-title>
       </v-app-bar>
 
-      <v-main style="margin-top: 64px;">
+      <v-main style="margin-top: 56px;">
         <v-container>
           <v-tabs v-model="state.activeTab" bg-color="primary" grow>
             <v-tab value="page">运行状态</v-tab>
@@ -22,6 +22,7 @@
                   :api="requestWrapper"
                   @switch="switch_tab"
                   @close="handleClose('Page')"
+                  :initial-config="state.initConfig"
                 ></page-component>
               </div>
             </v-window-item>
@@ -51,9 +52,9 @@
         </v-container>
       </v-main>
 
-      <v-footer app color="primary" class="text-center d-flex justify-center">
+      <!-- <v-footer app color="primary" class="text-center d-flex justify-center">
         <span class="text-white">MoviePilot 种子清理工插件本地测试 ©{{ new Date().getFullYear() }}</span>
-      </v-footer>
+      </v-footer> -->
     </v-app>
 
     <v-snackbar v-model="state.snackbar.show" :color="state.snackbar.color" :timeout="state.snackbar.timeout" location="top end">

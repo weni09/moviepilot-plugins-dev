@@ -32,6 +32,8 @@ class MissingOptions(BaseModel):
 
 class FilterModel(BaseModel):
     path: str = ""
+    client_name: str = ""
+    client: str = ""
 
 
 class SearchModel(BaseModel):

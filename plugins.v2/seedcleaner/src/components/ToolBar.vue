@@ -1,127 +1,144 @@
 <template>
-  <v-card flat class="tool-bar px-2 py-1">
-     <v-card-title class="text-subtitle-2 d-flex align-center px-3 py-2 bg-primary-lighten-5">
-        <v-icon icon="mdi-magnify" class="mr-2" color="primary" size="small"/>
-        <span>扫描选项</span>
-      </v-card-title>
-    <v-card-text>
-      <!-- 缺失选项 -->
-      <v-row align="center" no-gutters class="d-flex"> 
-         <v-col cols="6" class="d-flex align-center justify-start">
-          <v-row align="center" no-gutters class="d-flex justify-start">
-          <v-col cols="4" class="d-flex justify-start">
-              <span class="label-text font-weight-bold align-content-center">缺失选项：</span>
-          </v-col>
-          <v-col cols="4">
-          <v-checkbox v-model="state.missingOptions.file" label="缺文件的种子" hide-details/>
-        </v-col>
-         <v-col cols="4">
-          <v-checkbox v-model="state.missingOptions.seed" label="缺种的源文件" hide-details/>
-        </v-col>
-          </v-row>
-        </v-col>
-        <!-- 有无辅种选项 -->
-        <v-col cols="6"  class="d-flex align-center justify-start">
-          <v-row align="center" no-gutters class="d-flex justify-start">
-          <v-col cols="4" class="d-flex justify-start">
-            <span class="label-text font-weight-bold align-content-center">有无辅种：</span>
-          </v-col>
-          <v-col cols="8" class="d-flex justify-start">
-            <v-radio-group v-model="state.auxOption" inline hide-details>
-              <div class="d-flex justify-space-between">
-                <v-radio label="全部" value="all"/>
-                <v-radio label="无辅种" value="no_aux"/>
-                <v-radio label="有辅种" value="has_aux"/>
-              </div>
-            </v-radio-group>
-           </v-col>
-          </v-row>
-        </v-col>
-      </v-row>
-
-      <!-- 删除选项 -->
-      <v-row align="center" no-gutters class="d-flex">
-        <v-col cols="6" class="d-flex align-center justify-start">
-          <v-row align="center" no-gutters class="d-flex justify-start">
-              <v-col cols="4" class="d-flex justify-start">
-                <span class="label-text font-weight-bold align-content-center">删除选项：</span>
-              </v-col>
-            <v-col cols="8" class="d-flex justify-start">
-              <v-radio-group v-model="state.removeOption" inline hide-details>
-                <div class="d-flex justify-space-between">
-                <v-radio label="全部" value="all"/>
-                <v-radio label="仅删除种子" value="only_torrent"/>
-                <!--删除此项-->
-                <!-- <v-radio label="仅删除源文件" value="only_data"/> -->
-                </div>
-              </v-radio-group>
-            </v-col>
-            </v-row>
-          </v-col>
-          <!-- 是否使用存量种子数据 -->
-          <v-col cols="6" class="d-flex align-center justify-start">
+  <v-card flat class="tool-bar">
+     <v-card-title 
+     class="text-subtitle-2 d-flex align-center px-2 py-1 bg-primary-lighten-5 cursor-pointer"
+     @click="toggleCollapse"
+     >
+      <v-icon icon="mdi-magnify" class="mr-2" color="primary" size="small"/>
+      <span>扫描选项</span>
+      <!-- 折叠按钮 -->
+      <v-btn icon="mdi-chevron-left" 
+             @click.stop.prevent="toggleCollapse"
+             size="small"
+             variant="tonal"
+             class="ml-auto mr-4 transition-button"
+             :class="{ 'rotate-180': isCollapsed }"/>
+    </v-card-title>
+    <!-- 使用transition包裹内容实现动画效果 -->
+    <v-expand-transition>
+      <div v-show="!isCollapsed">
+        <v-card-text>
+          <!-- 缺失选项 -->
+          <v-row align="center" no-gutters class="d-flex"> 
+           <v-col cols="6" class="d-flex align-center justify-start">
             <v-row align="center" no-gutters class="d-flex justify-start">
             <v-col cols="4" class="d-flex justify-start">
-              <span class="label-text font-weight-bold align-content-center">存量数据：</span>
-              <v-tooltip activator="parent" location="top">
-                <span>使用缓存在MoviePilot插件的数据文件进行扫描</span></v-tooltip>
+                <span class="label-text font-weight-bold align-content-center">缺失选项：</span>
             </v-col>
-            <v-col cols="8"  class="d-flex justify-start">
-              <v-radio-group v-model="state.existingSeedData" inline hide-details>
+           <v-col cols="4">
+           <v-checkbox v-model="state.missingOptions.file" label="缺文件的种子" hide-details/>
+         </v-col>
+            <v-col cols="4">
+           <v-checkbox v-model="state.missingOptions.seed" label="缺种的源文件" hide-details/>
+         </v-col>
+            </v-row>
+          </v-col>
+          <!-- 有无辅种选项 -->
+          <v-col cols="6"  class="d-flex align-center justify-start">
+            <v-row align="center" no-gutters class="d-flex justify-start">
+            <v-col cols="4" class="d-flex justify-start">
+              <span class="label-text font-weight-bold align-content-center">有无辅种：</span>
+            </v-col>
+            <v-col cols="8" class="d-flex justify-start">
+              <v-radio-group v-model="state.auxOption" inline hide-details>
                 <div class="d-flex justify-space-between">
-                <v-radio label="否" :value="false"/>
-                <v-radio label="是" :value="true"/>
+                  <v-radio label="全部" value="all"/>
+                  <v-radio label="无辅种" value="no_aux"/>
+                  <v-radio label="有辅种" value="has_aux"/>
                 </div>
               </v-radio-group>
+             </v-col>
+            </v-row>
           </v-col>
-          </v-row>
-        </v-col>
-      </v-row>
-      
-      <v-row class="d-flex" align="center" no-gutters>
-        <v-col cols="6" class="d-flex align-center justify-start">
-          <v-row align="center" no-gutters class="d-flex justify-center">
-              <!-- Tracker 输入框 -->
-              <v-col cols="4">
-                <span class="label-text font-weight-bold">Tracker：</span>
+        </v-row>
+
+        <!-- 删除选项 -->
+        <v-row align="center" no-gutters class="d-flex">
+          <v-col cols="6" class="d-flex align-center justify-start">
+            <v-row align="center" no-gutters class="d-flex justify-start">
+                <v-col cols="4" class="d-flex justify-start">
+                  <span class="label-text font-weight-bold align-content-center">删除选项：</span>
+                </v-col>
+              <v-col cols="8" class="d-flex justify-start">
+                <v-radio-group v-model="state.removeOption" inline hide-details>
+                  <div class="d-flex justify-space-between">
+                  <v-radio label="全部" value="all"/>
+                  <v-radio label="仅删除种子" value="only_torrent"/>
+                  <!--删除此项-->
+                  <!-- <v-radio label="仅删除源文件" value="only_data"/> -->
+                  </div>
+                </v-radio-group>
               </v-col>
-              <v-col cols="8" class="pr-2">
-                <v-text-field
-                    v-model="state.trackerInput"
-                    label="Tracker (多个用分号分隔)"
-                    placeholder="tracker1.com;tracker2.com"
-                    variant="outlined"
-                    density="compact"
-                    size="small"
-                />
+              </v-row>
+            </v-col>
+            <!-- 是否使用存量种子数据 -->
+            <v-col cols="6" class="d-flex align-center justify-start">
+              <v-row align="center" no-gutters class="d-flex justify-start">
+              <v-col cols="4" class="d-flex justify-start">
+                <span class="label-text font-weight-bold align-content-center">存量数据：</span>
+                <v-tooltip activator="parent" location="top">
+                  <span>使用缓存在MoviePilot插件的数据文件进行扫描</span></v-tooltip>
               </v-col>
+              <v-col cols="8"  class="d-flex justify-start">
+                <v-radio-group v-model="state.existingSeedData" inline hide-details>
+                  <div class="d-flex justify-space-between">
+                  <v-radio label="否" :value="false"/>
+                  <v-radio label="是" :value="true"/>
+                  </div>
+                </v-radio-group>
+            </v-col>
             </v-row>
-        </v-col>
-        <v-col cols="6">
+          </v-col>
+        </v-row>
+        
+        <v-row class="d-flex" align="center" no-gutters>
+          <v-col cols="6" class="d-flex align-center justify-start">
             <v-row align="center" no-gutters class="d-flex justify-center">
-              <!-- 名称 输入框 -->
-              <v-col cols="4">
-                <span class="label-text font-weight-bold">名称查询:</span>
-              </v-col>
-              <v-col cols="8">
-                <v-text-field
-                    v-model="state.name"
-                    label="名称，支持正则表达式(Python)"
-                    placeholder="多啦A梦"
-                    variant="outlined"
-                    density="compact"
-                    size="small"
-                />
-              </v-col>
-            </v-row>
-        </v-col>
-      </v-row>
-    </v-card-text>
+                <!-- Tracker 输入框 -->
+                <v-col cols="4">
+                  <span class="label-text font-weight-bold">Tracker：</span>
+                </v-col>
+                <v-col cols="8" class="pr-2">
+                  <v-text-field
+                      v-model="state.trackerInput"
+                      label="Tracker (多个用分号分隔)"
+                      placeholder="tracker1.com;tracker2.com"
+                      variant="outlined"
+                      density="compact"
+                      size="small"
+                  />
+                </v-col>
+              </v-row>
+          </v-col>
+          <v-col cols="6">
+              <v-row align="center" no-gutters class="d-flex justify-center">
+                <!-- 名称 输入框 -->
+                <v-col cols="4">
+                  <span class="label-text font-weight-bold">名称查询:</span>
+                </v-col>
+                <v-col cols="8">
+                  <v-text-field
+                      v-model="state.name"
+                      label="名称，支持正则表达式(Python)"
+                      placeholder="多啦A梦"
+                      variant="outlined"
+                      density="compact"
+                      size="small"
+                  />
+                </v-col>
+              </v-row>
+          </v-col>
+        </v-row>
+        </v-card-text>
+      </div>
+    </v-expand-transition>
   </v-card>
 </template>
 
 <script setup>
-import {reactive} from 'vue';
+import { reactive, ref } from 'vue';
+
+const isCollapsed = ref(false);
 
 const state = reactive({
    missingOptions:{
@@ -135,7 +152,7 @@ const state = reactive({
     name:""
 });
 
-const initParams = ()=>{
+const initParams = () =>{
   // console.log("initParams called",state);
   state.missingOptions.seed = false;
   state.missingOptions.file = false;
@@ -146,11 +163,19 @@ const initParams = ()=>{
   state.name = '';
   // console.log("state after initParams", state.value); 
 }
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value;
+};
+
 defineExpose({
   state,
   initParams,
-})
+  isCollapsed,  // 暴露折叠状态给父组件
+  toggleCollapse  // 暴露切换方法给父组件
+});
 </script>
+
 <style lang="scss" scoped>
 .label-text {
   font-size: 0.9rem !important;
@@ -173,4 +198,12 @@ defineExpose({
   margin-bottom: 2px;
 }
 
+// 过渡动画相关样式
+.transition-button {
+  transition: transform 0.3s ease;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
 </style>
