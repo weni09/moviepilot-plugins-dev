@@ -51,6 +51,16 @@
                <v-icon icon="mdi-magnify" size="small"/>
                <v-tooltip activator="parent" location="top">开始扫描</v-tooltip>
             </v-btn>
+             <v-btn color="secondary"
+               @click="downloadTracker"
+               icon
+               variant="tonal"
+               :disabled="state.scaning || state.clearing"
+               size="small"
+               class="mr-4">
+               <v-icon icon="mdi-tray-arrow-down" size="small"/>
+               <v-tooltip activator="parent" location="top">导出所有Tracker</v-tooltip>
+            </v-btn>
             <v-btn
                 color="warning"
                 @click="resetParams"
@@ -111,7 +121,7 @@ import {onMounted, reactive, ref, Ref} from 'vue';
 import ToolBar from './ToolBar.vue';
 import ScanResults from './ScanResults.vue';
 import CleanupList from './CleanupList.vue';
-import {PLUGIN_ID, SnackbarModel, CombinedItem, ScanResult,ApiRequest,SortItem} from './definedFunctions.ts';
+import {PLUGIN_ID, SnackbarModel, CombinedItem, ScanResult,ApiRequest,SortItem,FilterModel} from './definedFunctions.ts';
 
 
 const emit = defineEmits(['close', 'switch']);
@@ -134,11 +144,7 @@ interface PageState {
     page: number;
     pageSize: number;
     sortBy: SortItem[];
-    filter:{
-      path:string;
-      client_name:string;
-      client:string;
-    }
+    filter:FilterModel;
   },
   snackbar: SnackbarModel,
   initConfig: Object // 初始配置
@@ -171,7 +177,9 @@ const state = reactive<PageState>({
     filter:{
       path:"",
       client_name:"",
-      client:""
+      client:"",
+      seeds_limit: [null,null],
+      size_limit: [null,null]
     }
   },
   snackbar: {
@@ -264,9 +272,7 @@ const addToCleanup = (cleanupList: Array<CombinedItem>) => {
   // 将选中的扫描结果添加到待清理列表
   console.log('添加到待清理', cleanupList.length);
   if (!cleanupList || cleanupList.length == 0) {
-    state.snackbar.message = "添加失败，未选择需要清理的项"
-    state.snackbar.color = 'error';
-    state.snackbar.show = true;
+    showNotification("添加失败，未选择需要清理的项", 'error');
     return
   }
   let willCleanupList: CombinedItem[] = cleanupList
@@ -279,20 +285,16 @@ const startCleanup = () => {
   let willCleanupList = cleanupRef.value.getCleanupList()
   props.api.post(`plugin/${PLUGIN_ID}/clear`, willCleanupList).then((res) => {
     if (res["code"]!='ok'){
-       state.snackbar.message = `清理失败:${res["message"]}`;
-       state.snackbar.color = 'error';
+       showNotification(`清理失败:${res["message"]}`, 'error');
     }else{
-      state.snackbar.message = '清理成功';
-      state.snackbar.color = 'success';
+       showNotification('清理成功', 'success');
       cleanupRef.value.deleteAllRecord()
     }
     // console.info("清理完成", res)
     state.snackbar.show = true;
   }).catch((e) => {
     console.error("清理出错", e)
-    state.snackbar.message = '清理失败: ' + (e.message || '未知错误');
-    state.snackbar.color = 'error';
-    state.snackbar.show = true;
+    showNotification('清理失败: ' + (e.message || '未知错误'), 'error');
   }).finally(() => {
     state.clearing = false
   })
@@ -331,14 +333,56 @@ const handleScanParamsUpdate = (newScanParams: { page: number; pageSize: number,
 };
 
 // 过滤扫描
-const applyFilter = (filter: { path: string,client_name:string,client:string }) => {
+const applyFilter = (filter: FilterModel) => {
   // 更新过滤条件
   state.scanParams.filter.path = filter.path || "";
   state.scanParams.filter.client_name = filter.client_name||"";
   state.scanParams.filter.client = filter.client||"";
+  state.scanParams.filter.seeds_limit = filter.seeds_limit||[];
+  state.scanParams.filter.size_limit = filter.size_limit||[];
   // 重新开始扫描
   startScan(false, false, false, true);
 };
+
+// 下载Tracker
+const downloadTracker = async () => { 
+  let url = `/plugin/${PLUGIN_ID}/tracker-list`;
+  try {
+    const res = await props.api.get(url);
+    // console.log("downloadTracker=>>", res);
+    const tracker_list: Array<string> = res.data;
+    if (tracker_list && tracker_list.length > 0) {
+      // 1. 将数组项通过换行符连接成一个字符串
+      const fileContent = tracker_list.join('\n');
+      // 2. 创建一个 Blob 对象
+      const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+      // 3. 创建一个 URL 指向 Blob
+      const blobUrl = URL.createObjectURL(blob);
+      // 4. 创建一个临时的 a 标签来触发下载
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'trackers.txt'; // 设置下载的文件名
+      // 5. 模拟点击链接并移除
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl); // 释放 Blob URL 资源
+      showNotification("下载成功！", "success");
+    } else {
+      showNotification("空数据，无法下载", "error");
+    }
+  } catch (err) {
+    showNotification("下载失败！", "error");
+    console.log("downloadTracker error=>>", err);
+  }
+};
+
+// 消息通知
+const showNotification = (text, color = 'success')=> {
+  state.snackbar.message = text;
+  state.snackbar.color = color;
+  state.snackbar.show = true;
+}
 
 // 获取配置
 const getConfig = ()=>{

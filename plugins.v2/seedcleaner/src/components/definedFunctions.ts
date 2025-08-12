@@ -104,6 +104,9 @@ interface TorrentItem extends BaseItem {
   trackers: string[];
   data_missing: boolean;
   removeOption: string;
+  seeds: number;
+  status: string;
+  error: string;
 }
 
 interface SourceFileItem extends BaseItem {
@@ -147,3 +150,12 @@ export interface DownloaderModel {
 }
 
 export type SortItem = { key: string, order?: boolean | 'asc' | 'desc' }
+
+
+export interface FilterModel{
+  path: string
+  client_name:string
+  client:string
+  seeds_limit:Array<number|null>
+  size_limit:Array<number|null>
+}

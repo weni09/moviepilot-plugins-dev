@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import List, Dict, Optional, Union, Literal
 from urllib.parse import urlparse
 
-from transmission_rpc import Client
-
+from transmission_rpc import Client, Torrent
+from app.plugins.seedcleaner.DefinedConsts import TorrentStatus
 from app.log import logger
 from app.plugins.seedcleaner.DataModel import TorrentModel
 
@@ -14,6 +14,7 @@ class TransmissionHandler:
     def __init__(self, name: str):
         self.client = None
         self.name: str = name
+        self.uncompleted_suffix = ".part"
 
     def connect(self, host='localhost', port=9091, username: str = "", password: str = ""):
         """连接到Transmission"""
@@ -58,6 +59,26 @@ class TransmissionHandler:
             logger.error(f"获取域名失败: {e}")
             return ""
 
+    def _is_missing_file(self, torrent: Torrent, data_path: Path = None) -> bool:
+        if data_path and (not data_path.exists() and not data_path.with_suffix(self.uncompleted_suffix).exists()):
+            return True
+        return False
+
+    def get_torrent_status_text(self, torrent: Torrent, data_path: Path = None) -> str:
+        if self._is_missing_file(torrent, data_path):
+            return TorrentStatus.MISSING_FILES.value
+        if torrent.error != 0:
+            return TorrentStatus.ERROR.value
+        if torrent.status.downloading or torrent.status.download_pending:
+            return TorrentStatus.DOWNLOADING.value
+        if torrent.status.seeding or torrent.status.seed_pending:
+            return TorrentStatus.COMPLETED.value
+        if torrent.status.checking or torrent.status.check_pending:
+            return TorrentStatus.CHECKING.value
+        if torrent.status.stopped:
+            return TorrentStatus.STOPPED.value
+        return TorrentStatus.UNKNOWN.value
+
     def get_all_torrents(self) -> Dict[str, TorrentModel]:
         """获取所有种子信息"""
         if not self.client:
@@ -71,6 +92,7 @@ class TransmissionHandler:
                 files = [{"name": file.name, "size": file.size} for file in torrent.get_files()]
                 files.sort(key=lambda x: x['name'] + str(x['size']))
                 data_path = Path(torrent.download_dir) / torrent.name
+                seeder_count = sum([tracker_stat.seeder_count for tracker_stat in torrent.tracker_stats])
                 torrents_info[torrent.hashString]: TorrentModel = TorrentModel(
                     client=TRANSMISSION,
                     client_name=self.name,
@@ -83,7 +105,10 @@ class TransmissionHandler:
                     file_count=len(files),
                     first_file=(files[0]['name'], files[0]['size']),
                     end_file=(files[-1]['name'], files[-1]['size']),
-                    data_missing=(not data_path.exists()) and not Path(str(data_path)+".part").exists()
+                    data_missing=self._is_missing_file(torrent, data_path),
+                    seeds=seeder_count if seeder_count > 0 else 0,
+                    status=self.get_torrent_status_text(torrent, data_path),
+                    error=torrent.error_string.strip() if torrent.error_string else '',
                 )
             logger.info(f"下载器 '{self.name}' (类型:{TRANSMISSION}) 获取种子: {len(torrents_info)} 个")
             return torrents_info

@@ -11,8 +11,8 @@ from typing import Dict, List, Any, Optional
 from urllib.parse import urlparse
 
 import qbittorrentapi
-from qbittorrentapi import TorrentInfoList, Version, Client
-
+from qbittorrentapi import TorrentInfoList, Version, Client, TorrentState, TorrentDictionary, Tracker, TrackersList
+from app.plugins.seedcleaner.DefinedConsts import TorrentStatus
 from app.log import logger
 from app.plugins.seedcleaner.DataModel import TorrentModel
 
@@ -28,6 +28,7 @@ class QbittorrentHandler:
         self.supported_app_versions.sort(key=lambda x: x)
         self.supported_api_versions.sort(key=lambda x: x)
         logger.debug(f"支持的APP版本{self.supported_app_versions},支持的API版本{self.supported_api_versions}")
+        self.uncompleted_suffix = ".!qB"
 
     def connect(self, host='localhost', port=8080, username='admin', password='admin'):
         """连接到Qbittorrent"""
@@ -90,20 +91,13 @@ class QbittorrentHandler:
             logger.error(f"获取种子内容失败: {e}")
             return []
 
-    def get_torrent_trackers(self, torrent_hash) -> set[str] | list[str]:
+    def get_torrent_trackers(self, torrent_hash) -> TrackersList:
         """
         获取种子的Trackers
         :param torrent_hash: 种子hash
         :return: TrackersList
         """
-        trackers = self.client.torrents_trackers(torrent_hash=torrent_hash)
-        res = set()
-        if not trackers:
-            return list(res)
-        for tracker in trackers:
-            if str(tracker['url']).startswith('http'):
-                res.add(str(tracker['url']))
-        return list(res)
+        return self.client.torrents_trackers(torrent_hash=torrent_hash)
 
     def get_torrent_trackers_domains(self, torrent_hash) -> List[str]:
         """
@@ -112,7 +106,10 @@ class QbittorrentHandler:
         :return: TrackersList
         """
         trackers = self.get_torrent_trackers(torrent_hash)
-
+        urls = set()
+        for tracker in trackers:
+            if str(tracker['url']).startswith('http'):
+                urls.add(str(tracker['url']))
         if not trackers:
             return []
 
@@ -126,7 +123,26 @@ class QbittorrentHandler:
             except Exception as e:
                 return ""
 
-        return [_get_domain(tracker) for tracker in trackers]
+        return [_get_domain(_url) for _url in urls]
+
+    def get_torrent_trackers_msg(self, torrent_hash: str) -> List[str]:
+        """
+        获取种子的Trackers信息
+        :param torrent_hash: 种子hash
+        :return: TrackersList
+        """
+        trackers = self.get_torrent_trackers(torrent_hash)
+        msg = set()
+        for tracker in trackers:
+            if str(tracker['url']).startswith('http') and tracker['msg']:
+                msg.add(tracker['msg'])
+        return list(msg)
+
+    def _get_only_one_error_msg(self, torrent: TorrentDictionary) -> str:
+        msg_list = self.get_torrent_trackers_msg(torrent.hash)
+        if len(msg_list) > 0 and torrent.state_enum.is_errored:
+            return msg_list[0]
+        return ""
 
     def delete_torrent(self, torrent_hash: str | List[str] = "", delete_files=False):
         """删除指定的种子（通过hash）
@@ -151,6 +167,30 @@ class QbittorrentHandler:
             logger.error(f"{self.name} 删除种子失败: {e}")
             return False
 
+    def _is_missing_file(self, torrent: TorrentDictionary, data_path: Path = None) -> bool:
+        if torrent.state_enum == TorrentState.MISSING_FILES:
+            return True
+        if data_path and (not data_path.exists() and not data_path.with_suffix(self.uncompleted_suffix).exists()):
+            return True
+        return False
+
+    def get_torrent_status_text(self, torrent: TorrentDictionary, data_path: Path = None) -> str:
+        if self._is_missing_file(torrent, data_path):
+            return TorrentStatus.MISSING_FILES.value
+        if torrent.state_enum.is_downloading:
+            return TorrentStatus.DOWNLOADING.value
+        if torrent.state_enum.is_uploading:
+            return TorrentStatus.UPLOADING.value
+        if torrent.state_enum.is_complete:
+            return TorrentStatus.COMPLETED.value
+        if torrent.state_enum.is_checking:
+            return TorrentStatus.CHECKING.value
+        if torrent.state_enum == TorrentState.ERROR:
+            return TorrentStatus.ERROR.value
+        if torrent.state_enum.is_paused or torrent.state_enum.is_stopped:
+            return TorrentStatus.STOPPED.value
+        return TorrentStatus.UNKNOWN.value
+
     def build_torrent_list(self) -> Dict[str, TorrentModel]:
         torrent_list: TorrentInfoList = self.get_all_torrents()
         res_dict: Dict[str, TorrentModel] = {}
@@ -174,7 +214,11 @@ class QbittorrentHandler:
                 file_count=len(torrent.files),
                 first_file=first_file_tuple,
                 end_file=end_file_tuple,
-                data_missing=(not data_path.exists()) and not Path(str(data_path)+".!qB").exists()
+                data_missing=self._is_missing_file(torrent, data_path),
+                # 添加做种人数和种子状态
+                seeds=torrent.num_complete if hasattr(torrent, 'num_complete') else 0,
+                status=self.get_torrent_status_text(torrent, data_path),
+                error=self._get_only_one_error_msg(torrent)
             )
             res_dict[torrent.hash] = torrent_model
         logger.info(f"下载器 '{self.name}' (类型:{QBITTORRENT}) 获取种子: {len(res_dict)} 个")

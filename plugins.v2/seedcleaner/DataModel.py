@@ -34,6 +34,8 @@ class FilterModel(BaseModel):
     path: str = ""
     client_name: str = ""
     client: str = ""
+    size_limit: Tuple[int | None, int | None] = ()  # 前端默认单位为MB
+    seeds_limit: Tuple[int | None, int | None] = ()
 
 
 class SearchModel(BaseModel):
@@ -74,6 +76,9 @@ class TorrentModel(BaseModel):
     trackers: List = []
     index: str = ""
     data_missing: bool = False
+    seeds: int = 0
+    status: str = ""
+    error: str = ""
 
 
 class MissingTorrentFileModel(BaseModel):

@@ -55,17 +55,17 @@
           <v-icon icon="mdi-filter-variant" size="small" />
         <v-tooltip activator="parent" location="top">筛选条件</v-tooltip>
        </v-btn>
-        <v-dialog v-model="filterDialog" max-width="400px">
+        <v-dialog v-model="filterDialog" max-width="500px">
           <v-card>
             <v-card-title class="d-flex align-center">
               <span>条件筛选(可选)</span>
             </v-card-title>
             <v-card-text>
               <v-row align="center" class="d-flex align-content-center" v-for ="(item,index) in filterItems">
-                <v-col cols="4" class="px-1"> 
-                  <span class="label-text font-weight-bold align-content-center">{{item.title}}：</span>
+                <v-col cols="3" class="px-1"> 
+                  <span class="label-text font-weight-bold align-content-center">{{item.title}}:</span>
                 </v-col>
-               <v-col cols="8" class="px-1" v-if="item.value==='path'">
+               <v-col cols="9" class="px-1" v-if="item.value==='path'">
                   <v-text-field
                     v-model="state.filter[item.value]"
                     :label="`输入筛选${getfilterTitleByKey(item.value)}`"
@@ -76,7 +76,7 @@
                     autofocus
                   />
                 </v-col>
-                 <v-col cols="8" class="px-1" v-else-if="item.value==='client_name'">
+                 <v-col cols="9" class="px-1" v-else-if="item.value==='client_name'">
                   <v-select
                       v-model="state.filter[item.value]"
                       :items="allDownloaders.names"
@@ -89,7 +89,7 @@
                       clearable
                   />
                 </v-col>
-                 <v-col cols="8" class="px-1" v-else-if="item.value==='client'">
+                 <v-col cols="9" class="px-1" v-else-if="item.value==='client'">
                   <v-select
                       v-model="state.filter[item.value]"
                       :items="allDownloaders.types"
@@ -101,6 +101,78 @@
                       class="text-caption"
                       clearable
                   />
+                </v-col>
+                 <v-col cols="9" class="px-1" v-else-if="item.value==='seeds_limit'">
+                    <v-row no-gutters>
+                    <v-col cols="5">
+                      <v-number-input
+                        v-model="state.filter[item.value][0]"
+                        :min="0"
+                        :max="state.filter[item.value][1] || 999999"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        placeholder="最小值"
+                        class="text-caption"
+                        controls-position="compact"
+                        control-variant="stacked"
+                        clearable
+                      />
+                    </v-col>
+                    <v-col cols="1" class="d-flex align-center justify-center text-caption">
+                      ~
+                    </v-col>
+                    <v-col cols="6">
+                      <v-number-input
+                        v-model="state.filter[item.value][1]"
+                        :min="state.filter[item.value][0] || 0"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        placeholder="最大值"
+                        class="text-caption"
+                        controls-position="compact"
+                        control-variant="stacked"
+                        clearable
+                      />
+                    </v-col>
+                  </v-row>
+                </v-col>
+                 <v-col cols="9" class="px-1" v-else-if="item.value==='size_limit'">
+                    <v-row no-gutters>
+                    <v-col cols="5">
+                      <v-number-input
+                        v-model="state.filter[item.value][0]"
+                        :min="0"
+                        :max="state.filter[item.value][1] || 999999999"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        placeholder="最小值"
+                        class="text-caption"
+                        controls-position="compact"
+                        control-variant="stacked"
+                        clearable
+                      />
+                    </v-col>
+                    <v-col cols="1" class="d-flex align-center justify-center text-caption">
+                      ~
+                    </v-col>
+                    <v-col cols="6">
+                      <v-number-input
+                        v-model="state.filter[item.value][1]"
+                        :min="state.filter[item.value][0] || 0"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        placeholder="最大值"
+                        class="text-caption"
+                        controls-position="compact"
+                        control-variant="stacked"
+                        clearable
+                      />
+                    </v-col>
+                  </v-row>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -119,7 +191,7 @@
             closable
             variant="outlined"
             @click:close="deleteFilter(key)"
-            v-if="value"
+            v-if="isShowFilterTag(value)"
           >
             <template v-slot:prepend>
              <v-tooltip location="bottom">
@@ -127,11 +199,13 @@
                   <v-icon v-bind="props" v-if="key=='path'">mdi-folder-arrow-left</v-icon>
                   <v-icon v-bind="props" v-else-if="key=='client_name'">mdi-download</v-icon>
                   <v-icon v-bind="props"  v-else-if="key=='client'">mdi-download-circle</v-icon>
+                  <span v-bind="props"  v-else-if="key=='seeds_limit'" class="font-weight-bold mr-1">做种数:</span>
+                  <span v-bind="props"  v-else-if="key=='size_limit'" class="font-weight-bold mr-1">大小:</span>
                 </template>
                 {{ getfilterTitleByKey(key) }}
               </v-tooltip>
             </template>
-          {{ value }}</v-chip>
+          {{ formatFilterTag(value,key) }}</v-chip>
       </template>
       </div>
       <div style="min-height: 260px; max-height: 420px; overflow-y: auto;">
@@ -195,12 +269,12 @@
   </template>
   <template #item.status="{ item }">
     <v-chip
-      :color="item.data_missing ? 'error' : 'success'"
+      :color="getStatusColor(item.status)"
       size="small"
       text-color="white"
       v-if="item.type === 'torrent'"
     >
-      {{ item.data_missing ? '缺失源文件' : '包含源文件' }}
+      {{ item.status }}
     </v-chip>
      <v-chip color="warning" 
      size="small" 
@@ -208,7 +282,9 @@
      v-else-if="item.type === 'file'"> 缺失种子
     </v-chip>
   </template>
-
+  <template #item.seeds="{ item }">
+    {{ item.type === 'torrent' ? item.seeds : '-' }}
+  </template>
   <template #item.size="{ item }">
     {{ item.size ? `${formatBytes(item.size)}` : '未知大小' }}  
   </template>
@@ -224,6 +300,9 @@
               <th class="text-left">
                 下载器名称
               </th>
+              <th class="text-left">
+                错误信息
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -233,6 +312,9 @@
               </td>
               <td class="text-left">
                   {{ `${item.type == 'torrent'?item.client_name:'-' }`}}
+              </td>
+                <td class="text-left" style="color:red;">
+                  {{ `${item.type == 'torrent' && item.error?item.error:'-' }` }}
               </td>
             </tr>
           </tbody>
@@ -320,6 +402,12 @@ const filterItems = [{
   { title:"下载器类型",
     value:"client",
   },
+  { title:"做种数",
+    value:"seeds_limit",
+  },
+  { title:"大小(MB)",
+    value:"size_limit",
+  },
 ]
 const state = reactive<StateModel>({
   selectedScans: [],
@@ -335,9 +423,16 @@ const state = reactive<StateModel>({
       { value: 'path', title: '路径',align:"left", sortable: true,maxWidth:"14rem", },
       { value: 'tracker', title: 'Tracker',align:"center", },
       { value: 'status', title: '状态' ,align:"center",},
+      { value: 'seeds', title: '做种数' ,align:"center",sortable: true},
       { value: 'size', title: '大小', sortable: true,align:"center", },
       { value: 'select', title: '',key:"data-table-select"}],
-  filter:{},
+  filter:{
+    path: '',
+    client_name: '',
+    client: '',
+    seeds_limit: [null,null],
+    size_limit: [null,null]
+  },
   currentFilterValues:["path"],
 })
 // 获取过滤项的标题通过key(value)
@@ -405,6 +500,15 @@ const totalPages = computed(() => {
      return Math.ceil(props.scanRes.total / props.scanParams.pageSize);
 });
 
+// 获取状态颜色
+const getStatusColor = (status: string) => {
+  let error_status = ['缺失源文件' , '错误' , '已停止' , '未知']
+  if (error_status.includes(status)) {
+    return 'error';
+  } else {
+    return 'success';
+  }
+};
 // 页码改变
 const handlePageChange = (newPage: number) => {
   emit('update:scanParams', {
@@ -487,10 +591,34 @@ const applyFilter = () => {
 
 // 删除筛选条件
 const deleteFilter = (name:string)=>{
-  state.filter[name] = ''
+  if (state.filter[name] instanceof Array){
+    state.filter[name] = [null,null]
+  }else {
+    state.filter[name] = ''
+  }
   filterDialog.value = false;
   emit('applyFilter', state.filter)
 };
+// 是否显示筛选标签
+const isShowFilterTag=(value:any)=>{
+  if (value instanceof Array && value.length === 2){
+    return value[0] !==null && value[1] !== null && value[0] !== '' && value[1] !== '';
+  }else if (value !== null && value !== ''){
+    return true
+  }
+  return false;
+}
+// 格式化筛选标签
+const formatFilterTag=(value:any,key:string="")=>{ 
+  let unit=""
+  if (value instanceof Array && value.length === 2){
+    if (key=='size_limit'){unit = 'MB'};
+    return `${value[0]} ~ ${value[1]} ${unit}`
+  }else{
+    return value
+  }
+}
+
 
 defineExpose({
   clearSelectedScans,

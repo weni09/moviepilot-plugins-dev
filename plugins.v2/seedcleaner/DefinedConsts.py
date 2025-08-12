@@ -1,5 +1,7 @@
 from urllib.parse import urlparse
 
+from enum import Enum
+
 QBITTORRENT = "qbittorrent"
 TRANSMISSION = "transmission"
 
@@ -17,3 +19,14 @@ VIDEO_SUFFIX_LIST = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm',
 
 TORRENT_INFO_FILE_NAME = "torrent_info.json"
 
+
+class TorrentStatus(str, Enum):
+    """种子状态"""
+    MISSING_FILES = "缺失源文件"
+    DOWNLOADING = "下载中"
+    UPLOADING = "上传中"
+    COMPLETED = "做种中"
+    CHECKING = "校验中"
+    ERROR = "错误"
+    STOPPED = "已停止"
+    UNKNOWN = "未知"
