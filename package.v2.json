@@ -3,11 +3,12 @@
         "name": "种子清理工",
         "description": "清理transmission/qbittorrent种子和源文件。",
         "labels": "插件工具",
-        "version": "1.5.2",
+        "version": "1.5.3",
         "icon": "delete.png",
         "author": "weni09",
         "level": 1,
         "history": {
+            "v1.5.3": "优化 transmission中no data found错误信息判断为缺失文件",
             "v1.5.2": "修复：新版mp依赖安装机制的变化引起的依赖问题",
             "v1.5.1": "优化：路径筛选支持正则表达式",
             "v1.5.0": "新增：做种数和大小筛选；做种数、错误字段;做种数排序;种子状态优化;全量tracker下载",

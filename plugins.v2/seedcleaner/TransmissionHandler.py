@@ -15,6 +15,7 @@ class TransmissionHandler:
         self.client = None
         self.name: str = name
         self.uncompleted_suffix = ".part"
+        self.missing_file_keyword = "no data found"
 
     def connect(self, host='localhost', port=9091, username: str = "", password: str = ""):
         """连接到Transmission"""
@@ -60,6 +61,8 @@ class TransmissionHandler:
             return ""
 
     def _is_missing_file(self, torrent: Torrent, data_path: Path = None) -> bool:
+        if self.missing_file_keyword in torrent.error_string.lower().strip():
+            return True
         if data_path and (not data_path.exists() and not data_path.with_suffix(self.uncompleted_suffix).exists()):
             return True
         return False
