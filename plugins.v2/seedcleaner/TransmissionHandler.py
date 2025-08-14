@@ -6,6 +6,7 @@ from transmission_rpc import Client, Torrent
 from app.plugins.seedcleaner.DefinedConsts import TorrentStatus
 from app.log import logger
 from app.plugins.seedcleaner.DataModel import TorrentModel
+from app.plugins.seedcleaner.toolkit import format_timestamp_to_time
 
 TRANSMISSION = "transmission"
 
@@ -96,6 +97,7 @@ class TransmissionHandler:
                 files.sort(key=lambda x: x['name'] + str(x['size']))
                 data_path = Path(torrent.download_dir) / torrent.name
                 seeder_count = sum([tracker_stat.seeder_count for tracker_stat in torrent.tracker_stats])
+                created_at = torrent.get("dateCreated")
                 torrents_info[torrent.hashString]: TorrentModel = TorrentModel(
                     client=TRANSMISSION,
                     client_name=self.name,
@@ -112,6 +114,7 @@ class TransmissionHandler:
                     seeds=seeder_count if seeder_count > 0 else 0,
                     status=self.get_torrent_status_text(torrent, data_path),
                     error=torrent.error_string.strip() if torrent.error_string else '',
+                    created_at=format_timestamp_to_time(created_at) if created_at else "1970-01-01 08:00:00",
                 )
             logger.info(f"下载器 '{self.name}' (类型:{TRANSMISSION}) 获取种子: {len(torrents_info)} 个")
             return torrents_info

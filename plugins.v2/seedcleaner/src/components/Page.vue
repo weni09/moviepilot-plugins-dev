@@ -179,7 +179,8 @@ const state = reactive<PageState>({
       client_name:"",
       client:"",
       seeds_limit: [null,null],
-      size_limit: [null,null]
+      size_limit: [null,null],
+      live_time: 0,
     }
   },
   snackbar: {
@@ -340,6 +341,8 @@ const applyFilter = (filter: FilterModel) => {
   state.scanParams.filter.client = filter.client||"";
   state.scanParams.filter.seeds_limit = filter.seeds_limit||[];
   state.scanParams.filter.size_limit = filter.size_limit||[];
+  state.scanParams.filter.size_limit = filter.size_limit||[];
+  state.scanParams.filter.live_time = filter.live_time||0;
   // 重新开始扫描
   startScan(false, false, false, true);
 };

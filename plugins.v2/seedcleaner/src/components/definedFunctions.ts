@@ -78,6 +78,77 @@ export const mapTrackers = (trackers: string[]): string[] => {
   });
 };
 
+
+const getStrUnit = (value:number,unit:string)=>{
+  if (value!=0){
+    return value.toFixed(0)+unit
+  }else{
+    return ""
+  }
+}
+export function formatTimeSince(_targetTime: string|Date): string {
+  // 解析目标时间
+    let targetTime: Date;
+    if (typeof _targetTime === 'string'){
+      targetTime = new Date(_targetTime);
+    }else{
+      targetTime = _targetTime
+    }
+  
+    const now = new Date();
+    // 计算时间差（毫秒）
+    const diffMs = now.getTime() - targetTime.getTime();
+    // 如果目标时间在未来，返回空字符串或适当处理
+    if (diffMs < 0) {
+        return "目标时间在未来";
+    }
+    // 计算各个时间单位
+    const seconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    // 计算月和年（近似值）
+    const targetYear = targetTime.getFullYear();
+    const targetMonth = targetTime.getMonth();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    let months = (currentYear - targetYear) * 12 + (currentMonth - targetMonth);
+    // 如果当前日期小于目标日期，减少一个月
+    if (now.getDate() < targetTime.getDate()) {
+        months--;
+    }
+    const years = Math.floor(months / 12);
+    // 根据规则格式化输出
+    if (seconds < 60) {
+        return `${seconds}秒`;
+    } else if (minutes < 60) {
+        return `${minutes}分钟`;
+    } else if (hours < 24) {
+        const remainingMinutes = minutes % 60;
+        return `${getStrUnit(hours,'小时')}${getStrUnit(remainingMinutes,'分钟')}`;
+    } else if (days < 7) {
+        const remainingHours = hours % 24;
+        return `${getStrUnit(days,'天')}${getStrUnit(remainingHours,'小时')}`;
+    } else if (months < 1) {
+        const remainingDays = days % 7;
+        return `${getStrUnit(weeks,'周')}${getStrUnit(remainingDays,'天')}`;
+    } else if (years < 1) {
+        const remainingWeeks = Math.floor((days % 30) / 7); // 近似计算
+        const remainingDays = days % 7;
+        return `${getStrUnit(months,'月')}${getStrUnit(remainingWeeks,'周')}${getStrUnit(remainingDays,'天')}`;
+    } else {
+        const remainingMonths = months % 12;
+        const remainingWeeks = Math.floor((days % 365) / 30 / 7); // 近似计算
+        const remainingDays = days % 7;
+        return `${getStrUnit(years,'年')}${getStrUnit(remainingMonths,'月')}${getStrUnit(remainingWeeks,'周')}${getStrUnit(remainingDays,'天')}`;
+    }
+}
+
+
+
+
+
 export interface ApiRequest {
   get: <T>(url: string, config?: any) => Promise<T>;
   post: <T>(url: string, data?: any, config?: any) => Promise<T>;
@@ -86,8 +157,6 @@ export interface ApiRequest {
   patch: <T>(url: string, data?: any, config?: any) => Promise<T>;
 }
 // definedFunctions.ts
-
-
 
 
 interface BaseItem {
@@ -107,6 +176,7 @@ interface TorrentItem extends BaseItem {
   seeds: number;
   status: string;
   error: string;
+  created_at:string;
 }
 
 interface SourceFileItem extends BaseItem {
@@ -158,4 +228,5 @@ export interface FilterModel{
   client:string
   seeds_limit:Array<number|null>
   size_limit:Array<number|null>
+  live_time:number
 }

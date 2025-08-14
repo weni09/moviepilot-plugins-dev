@@ -15,6 +15,7 @@ from qbittorrentapi import TorrentInfoList, Version, Client, TorrentState, Torre
 from app.plugins.seedcleaner.DefinedConsts import TorrentStatus
 from app.log import logger
 from app.plugins.seedcleaner.DataModel import TorrentModel
+from app.plugins.seedcleaner.toolkit import format_timestamp_to_time
 
 QBITTORRENT = "qbittorrent"
 
@@ -202,6 +203,7 @@ class QbittorrentHandler:
                 first_file_tuple = (torrent_file_list[0]['name'], torrent_file_list[0]['size'])
                 end_file_tuple = (torrent_file_list[-1]['name'], torrent_file_list[-1]['size'])
             data_path = Path(torrent.save_path) / torrent.name
+            created_at = torrent.properties.get("creation_date")
             torrent_model = TorrentModel(
                 client=QBITTORRENT,
                 client_name=self.name,
@@ -218,7 +220,8 @@ class QbittorrentHandler:
                 # 添加做种人数和种子状态
                 seeds=torrent.num_complete if hasattr(torrent, 'num_complete') else 0,
                 status=self.get_torrent_status_text(torrent, data_path),
-                error=self._get_only_one_error_msg(torrent)
+                error=self._get_only_one_error_msg(torrent),
+                created_at=format_timestamp_to_time(created_at) if created_at else "1970-01-01 08:00:00",
             )
             res_dict[torrent.hash] = torrent_model
         logger.info(f"下载器 '{self.name}' (类型:{QBITTORRENT}) 获取种子: {len(res_dict)} 个")

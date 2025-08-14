@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import time
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Any
 from urllib.parse import urlparse
@@ -26,7 +27,7 @@ class SeedCleaner(_PluginBase):
     # 插件图标
     plugin_icon = "delete.png"
     # 插件版本
-    plugin_version = "1.5.3"
+    plugin_version = "1.5.5"
     # 插件作者
     plugin_author = "weni09"
     # 作者主页
@@ -488,6 +489,11 @@ class SeedCleaner(_PluginBase):
                 up_limit = search_info.filter.seeds_limit[1]
                 if not (down_limit <= torrent_info.seeds <= up_limit) and key in res_dict.keys():
                     res_dict.pop(key, None)
+            # 种子存活时间，过滤掉大于存活时间的种子
+            if search_info.filter.live_time != 0 and key in res_dict.keys():
+                time_diff = datetime.now() - datetime.strptime(torrent_info.created_at, '%Y-%m-%d %H:%M:%S')
+                if time_diff.total_seconds() > search_info.filter.live_time * 86400:
+                    res_dict.pop(key, None)
             # 构建响应列表
             if len(res_dict) > 0 and key in res_dict.keys():
                 value = res_dict[key]
@@ -505,6 +511,7 @@ class SeedCleaner(_PluginBase):
                     "seeds": value.seeds,
                     "status": value.status,
                     "error": value.error,
+                    "created_at": value.created_at,
                 })
         return res_list
 

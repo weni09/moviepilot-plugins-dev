@@ -36,6 +36,7 @@ class FilterModel(BaseModel):
     client: str = ""
     size_limit: Tuple[int | None, int | None] = ()  # 前端默认单位为MB
     seeds_limit: Tuple[int | None, int | None] = ()
+    live_time: int = 0  # 单位默认:天
 
 
 class SearchModel(BaseModel):
@@ -79,6 +80,7 @@ class TorrentModel(BaseModel):
     seeds: int = 0
     status: str = ""
     error: str = ""
+    created_at: str = ""
 
 
 class MissingTorrentFileModel(BaseModel):

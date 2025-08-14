@@ -68,7 +68,7 @@
                <v-col cols="9" class="px-1" v-if="item.value==='path'">
                   <v-text-field
                     v-model="state.filter[item.value]"
-                    :label="`输入筛选${getfilterTitleByKey(item.value)}`"
+                    :label="`输入筛选${getfilterTitleByKey(item.value)},支持正则表达式`"
                     @keyup.enter="applyFilter"
                     density="compact"
                     variant="outlined"
@@ -174,6 +174,19 @@
                     </v-col>
                   </v-row>
                 </v-col>
+                 <v-col cols="9" class="px-1 d-flex" v-else-if="item.value==='live_time'">
+                   <v-number-input
+                        v-model="state.filter[item.value]"
+                        :min="0"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        class="text-caption"
+                        controls-position="compact"
+                        control-variant="stacked"
+                    />
+                    <div class="px-3 d-flex align-center bg-primary" style="margin-left:2px;border-radius: 3px;"><span>天</span></div>
+                </v-col>
               </v-row>
             </v-card-text>
             <v-card-actions>
@@ -184,10 +197,10 @@
         </v-dialog>
     </v-card-title>
     <v-card-text class="pa-0">
-      <div class="filter-chips d-flex justify-start px-4">
+      <div class="filter-chips d-flex justify-start align-center px-4">
         <template v-for="(value,key) in state.filter">
           <v-chip
-            class="mx-2"
+            class="mx-2 align-center"
             closable
             variant="outlined"
             @click:close="deleteFilter(key)"
@@ -201,6 +214,7 @@
                   <v-icon v-bind="props"  v-else-if="key=='client'">mdi-download-circle</v-icon>
                   <span v-bind="props"  v-else-if="key=='seeds_limit'" class="font-weight-bold mr-1">做种数:</span>
                   <span v-bind="props"  v-else-if="key=='size_limit'" class="font-weight-bold mr-1">大小:</span>
+                  <v-icon v-bind="props"  v-else-if="key=='live_time'" class="mr-1">mdi-clock-outline</v-icon>
                 </template>
                 {{ getfilterTitleByKey(key) }}
               </v-tooltip>
@@ -294,27 +308,33 @@
         <v-table density="compact">
           <thead>
             <tr>
-              <th class="text-left">
+              <th class="text-center">
                 Hash
               </th>
               <th class="text-left">
                 下载器名称
               </th>
-              <th class="text-left">
+              <th class="text-center">
                 错误信息
+              </th>
+              <th class="text-center">
+                存活时间
               </th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="text-left">
+              <td class="text-center">
                   {{ item.hash }}
               </td>
               <td class="text-left">
                   {{ `${item.type == 'torrent'?item.client_name:'-' }`}}
               </td>
-                <td class="text-left" style="color:red;">
+                <td class="text-center text-error">
                   {{ `${item.type == 'torrent' && item.error?item.error:'-' }` }}
+              </td>
+                  <td class="text-center text-success">
+                  {{ `${item.type == 'torrent' && formatCreatedTime(item.created_at) != ""? formatCreatedTime(item.created_at) :"-" }` }}
               </td>
             </tr>
           </tbody>
@@ -341,7 +361,8 @@
 <script setup lang="ts">
 import {ref, computed, reactive, watch} from 'vue';
 import type {PropType} from 'vue';
-import {formatBytes, SnackbarModel,CombinedItem, ScanResult,copyPath,mapTrackers,SortItem} from "./definedFunctions";
+import {formatBytes, SnackbarModel,CombinedItem, ScanResult,copyPath,mapTrackers,SortItem,formatTimeSince} from "./definedFunctions";
+import { number } from 'echarts';
 
 
 interface StateModel {
@@ -408,6 +429,9 @@ const filterItems = [{
   { title:"大小(MB)",
     value:"size_limit",
   },
+   { title:"存活(小于)",
+    value:"live_time",
+  },
 ]
 const state = reactive<StateModel>({
   selectedScans: [],
@@ -431,7 +455,8 @@ const state = reactive<StateModel>({
     client_name: '',
     client: '',
     seeds_limit: [null,null],
-    size_limit: [null,null]
+    size_limit: [null,null],
+    live_time:0,
   },
   currentFilterValues:["path"],
 })
@@ -603,6 +628,8 @@ const deleteFilter = (name:string)=>{
 const isShowFilterTag=(value:any)=>{
   if (value instanceof Array && value.length === 2){
     return value[0] !==null && value[1] !== null && value[0] !== '' && value[1] !== '';
+  }else if (typeof value === 'number'){
+    return value !== 0
   }else if (value !== null && value !== ''){
     return true
   }
@@ -619,6 +646,15 @@ const formatFilterTag=(value:any,key:string="")=>{
   }
 }
 
+//格式化种子生存时间
+const formatCreatedTime = (time: string)=>{
+  if (time == "1970-01-01 08:00:00"){
+return ""
+  }
+  else{
+    return formatTimeSince(time)
+  }
+}
 
 defineExpose({
   clearSelectedScans,
