@@ -6,6 +6,7 @@ import subprocess
 import time
 from collections import defaultdict
 from datetime import datetime
+from operator import itemgetter
 from pathlib import Path
 from typing import Dict, Optional, Any
 from urllib.parse import urlparse
@@ -27,9 +28,9 @@ class SeedCleaner(_PluginBase):
     # 插件图标
     plugin_icon = "delete.png"
     # 插件版本
-    plugin_version = "1.5.5"
+    plugin_version = "1.6.0"
     # 插件作者
-    plugin_author = "weni09"
+    plugin_author = "weni09,KoWming"
     # 作者主页
     author_url = "https://github.com/weni09/MoviePilot-Plugins"
     # 插件配置项ID前缀
@@ -366,7 +367,7 @@ class SeedCleaner(_PluginBase):
                 type="file",
                 name=p.name,
                 size=self.computed_file_dir_size(p),
-                path=str(p),
+                path=str(p.parent),
                 hash=self._generate_mission_file_hash(p)
             ).dict() for p in extra_paths
         ]
@@ -506,7 +507,7 @@ class SeedCleaner(_PluginBase):
                     "hash": value.hash,
                     "size": int(value.total_size) or 0,
                     "name": value.name,
-                    "path": str(Path(value.save_path) / value.name),
+                    "path": str(value.save_path),
                     "removeOption": search_info.removeOption,
                     "seeds": value.seeds,
                     "status": value.status,
@@ -543,9 +544,12 @@ class SeedCleaner(_PluginBase):
         missing_files_size = sum([x["size"] for x in missingFiles])
         total_size = torrent_files_size + missing_files_size
         total = len(combined)
-        sort_name = search_info.sortBy[0]
-        sort_order = search_info.sortBy[1]
-        combined.sort(key=lambda x: x[sort_name.lower()], reverse=sort_order == "desc")
+        if search_info.sortBy:  # 排序
+            # 从后往前应用排序规则，利用稳定排序的特性实现多字段排序
+            for item in reversed(search_info.sortBy):
+                combined.sort(key=lambda x: x[item.key.lower()], reverse=item.order == "desc")
+                # combined = sorted(combined, key=itemgetter(item.key.lower()), reverse=item.order == "desc")
+
         paginated_combined = combined[(search_info.page - 1) * search_info.limit: search_info.page * search_info.limit]
         logger.info(f"扫描结果数量: {len(combined)}, 返回第 {search_info.page} 页")
         res = {
@@ -618,7 +622,7 @@ class SeedCleaner(_PluginBase):
                     will_delete_torrent_dict[clear_info.client_name][clear_info.removeOption] = []
                 will_delete_torrent_dict[clear_info.client_name][clear_info.removeOption].append(clear_info.hash)
             elif clear_info.type == "file":
-                will_delete_file_list.append(Path(clear_info.path))
+                will_delete_file_list.append(Path(clear_info.path)/clear_info.name)
         logger.debug(f"Will delete torrents: {will_delete_torrent_dict}; Will delete files: {will_delete_file_list}")
         for downloader_name, clear_options in will_delete_torrent_dict.items():  # 按下载器批量删除种子
             downloader_info = self.get_downloader_by_name(downloader_name)

@@ -1,23 +1,36 @@
 <template>
   <v-card flat class="mb-4">
-    <v-card-title class="text-subtitle-1 d-flex align-center px-2 py-1 bg-primary-lighten-5">
-      <div class="d-flex align-center mr-4">
-        <v-chip class="ml-2" size="x-small" color="info" variant="flat" v-if="totalComputed!=''">
-          {{ totalComputed }}
+    <v-card-title class="text-subtitle-1 d-flex align-center px-2 py-1 bg-primary-lighten-5 flex-wrap">
+      <div class="d-flex title-stats align-center ml-1" :class="[smAndDown ? 'w-100 mb-2' : 'mr-1']">
+         <!-- 全选复选框 -->
+        <v-checkbox
+          :model-value="isSelectAll"
+          :indeterminate="isIndeterminate"
+          hide-details
+          @change="toggleSelectAll"
+          :size="smAndDown?'x-small':'small'"
+          :label="smAndDown ? '' : '全选'"
+          :density="smAndDown?'compact':'comfortable'"
+          class="select-all-checkbox"
+        />
+        <v-chip :size="smAndDown?'x-small':'small'" color="info" variant="flat" v-if="totalComputed!=''">
+          <v-icon size="14" class="mr-1">mdi-database</v-icon>
+          {{ totalComputed }} 
         </v-chip>
-        <v-chip class="ml-2" size="x-small" color="error" variant="flat">
+        <v-chip  :size="smAndDown?'x-small':'small'" color="error" variant="flat" v-if="state.selectedScans.length > 0">
+          <v-icon size="14" class="mr-1">mdi-checkbox-multiple-marked</v-icon>
           {{ `已选择 ${state.selectedScans.length}项: ${selectedScansSize}` }}
         </v-chip>
-        </div>
-         <v-spacer />
+      </div>
+      <v-spacer v-if="!smAndDown" />
+      <div class="d-flex align-center ml-1 flex-wrap" v-if="totalPages >= 1">
       <v-select
           v-model="scanParams.pageSize"
           :items="[50, 100, 200, 300, 500]"
-          label="每页数量"
           variant="underlined"
           density="compact"
-          size="small"
-          style="max-width: 120px;"
+          :size="smAndDown?'x-small':'small'"
+          :style="smAndDown?'max-width: 63px;':'max-width: 120px;'"
           @update:modelValue="handlePageSizeChange"
       ></v-select>
       <v-pagination
@@ -25,328 +38,109 @@
           :length="totalPages"
           @update:modelValue="handlePageChange"
           rounded="circle"
-          size="small"
-          class="mr-8"
-          :total-visible="5"
+          variant="elevated"
+          :size="'small'"
+          prev-icon="mdi-arrow-left-circle"
+          next-icon="mdi-arrow-right-circle"
+          :density="smAndDown?'compact':'comfortable'"
+          :total-visible="smAndDown?1:7"
+          :class="[smAndDown?'ml-1':'ml-2']"
+          :elevation="5"
       ></v-pagination>
-     
-      <v-btn color="primary"
-             @click="deleteAllRecord"
-             class="mr-4"
-             icon
-             size="small">
-             <v-icon icon="mdi-broom" size="small"/>
-             <v-tooltip activator="parent" location="top">清空记录</v-tooltip>
-      </v-btn>
-      <v-btn color="success"
-             @click="addToCleanup"
-             icon
-             size="small"
-             class="mr-4"
-             >
-              <v-icon icon="mdi-plus-box" size="small"/>
-             <v-tooltip activator="parent" location="top">添加到待清理</v-tooltip>
-      </v-btn>
-       <v-btn color="warning"
-          icon
-          size="small"
-          class="mr-4"
-          @click="toggleFilter">
-          <v-icon icon="mdi-filter-variant" size="small" />
-        <v-tooltip activator="parent" location="top">筛选条件</v-tooltip>
-       </v-btn>
-        <v-dialog v-model="filterDialog" max-width="500px">
-          <v-card>
-            <v-card-title class="d-flex align-center">
-              <span>条件筛选(可选)</span>
-            </v-card-title>
-            <v-card-text>
-              <v-row align="center" class="d-flex align-content-center" v-for ="(item,index) in filterItems">
-                <v-col cols="3" class="px-1"> 
-                  <span class="label-text font-weight-bold align-content-center">{{item.title}}:</span>
-                </v-col>
-               <v-col cols="9" class="px-1" v-if="item.value==='path'">
-                  <v-text-field
-                    v-model="state.filter[item.value]"
-                    :label="`输入筛选${getfilterTitleByKey(item.value)},支持正则表达式`"
-                    @keyup.enter="applyFilter"
-                    density="compact"
-                    variant="outlined"
-                    clearable
-                    autofocus
-                  />
-                </v-col>
-                 <v-col cols="9" class="px-1" v-else-if="item.value==='client_name'">
-                  <v-select
-                      v-model="state.filter[item.value]"
-                      :items="allDownloaders.names"
-                      :item-title="item=>item"
-                      :item-value="item=>item"
-                      :label="`选择筛选${getfilterTitleByKey(item.value)}`"
-                      variant="outlined"
-                      density="compact"
-                      class="text-caption"
-                      clearable
-                  />
-                </v-col>
-                 <v-col cols="9" class="px-1" v-else-if="item.value==='client'">
-                  <v-select
-                      v-model="state.filter[item.value]"
-                      :items="allDownloaders.types"
-                      :item-title="item=>item"
-                      :item-value="item=>item"
-                      :label="`选择筛选${getfilterTitleByKey(item.value)}`"
-                      variant="outlined"
-                      density="compact"
-                      class="text-caption"
-                      clearable
-                  />
-                </v-col>
-                 <v-col cols="9" class="px-1" v-else-if="item.value==='seeds_limit'">
-                    <v-row no-gutters>
-                    <v-col cols="5">
-                      <v-number-input
-                        v-model="state.filter[item.value][0]"
-                        :min="0"
-                        :max="state.filter[item.value][1] || 999999"
-                        variant="outlined"
-                        density="compact"
-                        hide-details
-                        placeholder="最小值"
-                        class="text-caption"
-                        controls-position="compact"
-                        control-variant="stacked"
-                        clearable
-                      />
-                    </v-col>
-                    <v-col cols="1" class="d-flex align-center justify-center text-caption">
-                      ~
-                    </v-col>
-                    <v-col cols="6">
-                      <v-number-input
-                        v-model="state.filter[item.value][1]"
-                        :min="state.filter[item.value][0] || 0"
-                        variant="outlined"
-                        density="compact"
-                        hide-details
-                        placeholder="最大值"
-                        class="text-caption"
-                        controls-position="compact"
-                        control-variant="stacked"
-                        clearable
-                      />
-                    </v-col>
-                  </v-row>
-                </v-col>
-                 <v-col cols="9" class="px-1" v-else-if="item.value==='size_limit'">
-                    <v-row no-gutters>
-                    <v-col cols="5">
-                      <v-number-input
-                        v-model="state.filter[item.value][0]"
-                        :min="0"
-                        :max="state.filter[item.value][1] || 999999999"
-                        variant="outlined"
-                        density="compact"
-                        hide-details
-                        placeholder="最小值"
-                        class="text-caption"
-                        controls-position="compact"
-                        control-variant="stacked"
-                        clearable
-                      />
-                    </v-col>
-                    <v-col cols="1" class="d-flex align-center justify-center text-caption">
-                      ~
-                    </v-col>
-                    <v-col cols="6">
-                      <v-number-input
-                        v-model="state.filter[item.value][1]"
-                        :min="state.filter[item.value][0] || 0"
-                        variant="outlined"
-                        density="compact"
-                        hide-details
-                        placeholder="最大值"
-                        class="text-caption"
-                        controls-position="compact"
-                        control-variant="stacked"
-                        clearable
-                      />
-                    </v-col>
-                  </v-row>
-                </v-col>
-                 <v-col cols="9" class="px-1 d-flex" v-else-if="item.value==='live_time'">
-                   <v-number-input
-                        v-model="state.filter[item.value]"
-                        :min="0"
-                        variant="outlined"
-                        density="compact"
-                        hide-details
-                        class="text-caption"
-                        controls-position="compact"
-                        control-variant="stacked"
-                    />
-                    <div class="px-3 d-flex align-center bg-primary" style="margin-left:2px;border-radius: 3px;"><span>天</span></div>
-                </v-col>
-              </v-row>
-            </v-card-text>
-            <v-card-actions>
-              <v-btn @click="filterDialog = false;">取消</v-btn>
-              <v-btn color="primary" @click="applyFilter">确定</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
+      <div class="d-flex align-center ml-1">
+       <v-text-field
+          :class="smAndDown?'ml-1':'ml-3'"
+          variant="underlined"
+          density="compact"
+          hide-details
+          :size="smAndDown?'x-small':'small'"
+          :label="`共 ${ totalPages } 页`"
+          :max-width="smAndDown?100:130"
+          v-model="state.currentPage"
+          >
+          <template #prepend-inner>
+          <!-- <v-chip color="grey-darken-3" :size="18" variant="elevated" class="go-page-prepend" @click="goToPage">去</v-chip> -->
+          <!-- <v-icon size="18" class="mr-1">mdi-close-circle</v-icon> -->
+           <v-icon size="20" class="mr-1 cursor-pointer go-page-append" 
+            @click="goToPage"
+           color="primary"
+           title="跳转到"
+           >mdi-arrow-right-bold-circle</v-icon>
+        </template>
+        <template #append-inner>
+          <v-icon size="20" class="mr-1 cursor-pointer go-page-append" 
+          @click.stop="state.currentPage=undefined"
+           color="#009688"
+           title="清除"
+           >mdi-close-circle</v-icon>
+          <!-- <v-chip color="grey-darken-3 cursor-pointer" :size="'x-small'" variant="elevated" class="go-page-append" @click="goToPage">页</v-chip> -->
+        </template>
+        </v-text-field>
+        </div>
+    </div>
     </v-card-title>
     <v-card-text class="pa-0">
-      <div class="filter-chips d-flex justify-start align-center px-4">
-        <template v-for="(value,key) in state.filter">
-          <v-chip
-            class="mx-2 align-center"
-            closable
-            variant="outlined"
-            @click:close="deleteFilter(key)"
-            v-if="isShowFilterTag(value)"
-          >
-            <template v-slot:prepend>
-             <v-tooltip location="bottom">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" v-if="key=='path'">mdi-folder-arrow-left</v-icon>
-                  <v-icon v-bind="props" v-else-if="key=='client_name'">mdi-download</v-icon>
-                  <v-icon v-bind="props"  v-else-if="key=='client'">mdi-download-circle</v-icon>
-                  <span v-bind="props"  v-else-if="key=='seeds_limit'" class="font-weight-bold mr-1">做种数:</span>
-                  <span v-bind="props"  v-else-if="key=='size_limit'" class="font-weight-bold mr-1">大小:</span>
-                  <v-icon v-bind="props"  v-else-if="key=='live_time'" class="mr-1">mdi-clock-outline</v-icon>
-                </template>
-                {{ getfilterTitleByKey(key) }}
-              </v-tooltip>
-            </template>
-          {{ formatFilterTag(value,key) }}</v-chip>
-      </template>
+        <!-- 筛选标签区域 - 紧凑彩色设计 -->
+       <div class="filter-section-compact pa-3 pb-2" v-if="activeFilterCount > 0">
+         <!-- 筛选标签紧凑布局 -->
+         <div class="filter-chips-compact">
+           <template v-for="(value,key) in state.filter">
+             <v-chip
+               v-if="isShowFilterTag(value,key)"
+               :key="key"
+               class="filter-chip-compact"
+               :class="`filter-${key}`"
+               closable
+               variant="elevated"
+               size="small"
+               @click:close="deleteFilter(key)"
+               elevation="2"
+             >
+               <template v-slot:prepend>
+                <v-tooltip location="top">
+                   <template #activator="{ props }">
+                     <v-icon v-bind="props" v-if="getfilterAttrByKey('type',key)=='icon'" size="14">{{ getfilterAttrByKey('label',key) }}</v-icon>
+                     <span v-else-if="getfilterAttrByKey('type',key)=='text'" size="14">{{ getfilterAttrByKey('label',key) }}</span>
+                   </template>
+                   {{ getfilterAttrByKey("title",key) }}
+                 </v-tooltip>
+               </template>
+               {{ formatFilterTag(value,key) }}
+             </v-chip>
+           </template>
+         </div>
       </div>
-      <div style="min-height: 260px; max-height: 420px; overflow-y: auto;">
-      <v-data-table-server
-        :headers="state.headers"
-        :hide-default-header="false"
-        :items="props.scanRes.combinedList"
-        :items-per-page="scanParams.pageSize"
-        :page="scanParams.page"
-        :item-count="props.scanRes.total"
-        :items-length="props.scanRes.total"
-        :sort-by.sync="props.scanParams.sortBy"
-        :item-value="item => item"
+      <div style="min-height: 260px; max-height: 450px; overflow-y: auto;">
+        <!-- <data-list-table 
+          v-if="!props.loading && props.scanRes.combinedList.length > 0"
+          v-model:selectedScans="state.selectedScans"
+          :headers="state.headers"
+          :scanRes="props.scanRes"
+          :scanParams="props.scanParams"
+          @update:scanParams="handleScanParamsChange"
+          :loading="props.loading"
+          @copyPath="_copyPath"
+        /> -->
+        <data-list-card
+        v-if="!props.loading && props.scanRes.combinedList.length > 0"
+         v-model:selectedScans="state.selectedScans"
+        :scanRes="props.scanRes"
         :loading="props.loading"
-        v-model="state.selectedScans"
-        must-sort
-        fixed-header
-        height="420px"
-        density="default"
-        hover
-        hide-default-footer
-        show-expand
-        show-select
-        expand-on-click
-        @update:sortBy="handleSortChange"
-        @update:page="handlePageChange"
-        @update:items-per-page="handlePageSizeChange">
-  <template #loading>
-        <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
-  </template>
-  <template #item.name="{ item }">
-     <v-chip
-            :color="item.hasOwnProperty('client') && item.client === 'transmission' ? 'primary' : 'error'"
-            size="small"
-            text-color="white"
-            v-if="item.hasOwnProperty('client') && item.client">
-            {{ (item.client || '').slice(0, 2) }}
-          </v-chip>
-          <span class="name-text">{{ item.name }}</span>
-  </template>
-  <template #item.path="{ item }">
-    <span>{{ item.path.replace(`/${item.name}`,"").replace(`\\${item.name}`,"") }}</span>
-    <v-btn icon="mdi-content-copy" size="x-small" @click.stop="_copyPath(item.path)" style="margin-left: 8px;"></v-btn>
-  </template>
-  <template #item.tracker="{ item }">
-    <div v-if="item.type === 'torrent' && item?.trackers.length > 0">
-      <v-chip
-        :color="getColorByString(item.trackers)"
-        text-color="white"
-        size="small"
-        class="mr-1 mb-1"
-      >
-        {{ mapTrackers(item.trackers)[0] }}
-      </v-chip>
-    </div>
-    <div v-else>
-      <v-chip color="info" text-color="white" size="small">
-        无 Tracker
-      </v-chip>
-    </div>
-  </template>
-  <template #item.status="{ item }">
-    <v-chip
-      :color="getStatusColor(item.status)"
-      size="small"
-      text-color="white"
-      v-if="item.type === 'torrent'"
-    >
-      {{ item.status }}
-    </v-chip>
-     <v-chip color="warning" 
-     size="small" 
-     text-color="white" 
-     v-else-if="item.type === 'file'"> 缺失种子
-    </v-chip>
-  </template>
-  <template #item.seeds="{ item }">
-    {{ item.type === 'torrent' ? item.seeds : '-' }}
-  </template>
-  <template #item.size="{ item }">
-    {{ item.size ? `${formatBytes(item.size)}` : '未知大小' }}  
-  </template>
-  <template #expanded-row="{ item }">
-    <tr>
-      <td colspan="100%">
-        <v-table density="compact">
-          <thead>
-            <tr>
-              <th class="text-center">
-                Hash
-              </th>
-              <th class="text-left">
-                下载器名称
-              </th>
-              <th class="text-center">
-                错误信息
-              </th>
-              <th class="text-center">
-                存活时间
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-center">
-                  {{ item.hash }}
-              </td>
-              <td class="text-left">
-                  {{ `${item.type == 'torrent'?item.client_name:'-' }`}}
-              </td>
-                <td class="text-center text-error">
-                  {{ `${item.type == 'torrent' && item.error?item.error:'-' }` }}
-              </td>
-                  <td class="text-center text-success">
-                  {{ `${item.type == 'torrent' && formatCreatedTime(item.created_at) != ""? formatCreatedTime(item.created_at) :"-" }` }}
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
-      </td>
-    </tr>
-  </template>
-  <template #item.select="{ item }">
-    <v-checkbox v-model="state.selectedScans" :value="item" hide-details/>
-  </template>
+          @copyPath="_copyPath"
+          ref="dataListCardRef"
+        />
+        <!-- 空状态显示 -->
+        <div v-else-if="!props.loading && props.scanRes.combinedList.length === 0" class="empty-state">
+          <v-icon icon="mdi-database-off" />
+          <div class="text-h6 mb-2">暂无数据</div>
+          <div class="text-body-2">当前筛选条件下没有找到匹配的种子或文件</div>
+        </div>
 
-</v-data-table-server></div>
+        <!-- 加载状态 -->
+        <div v-else class="pa-4">
+          <v-skeleton-loader type="card@8" />
+        </div>
+      </div>
     </v-card-text>
      <v-snackbar v-model="state.snackbar.show"
                 :timeout="3000"
@@ -355,22 +149,43 @@
     >
       {{ state.snackbar.message }}
     </v-snackbar>
+    <filter-dialog
+    v-model:dialogShow="state.filterDialog" 
+    :filter="state.filter" 
+    :initialConfig="props.initialConfig"
+    @filterChange="filterChange"
+    @applyFilter="applyFilter"
+    />
+    <sort-dialog
+    v-model:dialogShow="state.sortDialog" 
+    @applySort="applySort"
+    />
   </v-card>
 </template>
 
 <script setup lang="ts">
 import {ref, computed, reactive, watch} from 'vue';
 import type {PropType} from 'vue';
-import {formatBytes, SnackbarModel,CombinedItem, ScanResult,copyPath,mapTrackers,SortItem,formatTimeSince} from "./definedFunctions";
-import { number } from 'echarts';
+import {formatBytes, SnackbarModel,CombinedItem, ScanResult,copyPath,mapTrackers,SortItem,formatTimeSince, FilterModel} from "./definedFunctions";
+import FilterDialog from './FilterDialog.vue';
+import SortDialog from './SortDialog.vue';
+import DataListTable from './DataListTable.vue';
+import DataListCard from './DataListCard.vue';
+// 响应式断点：小屏幕（含）仅显示图标
+import { useDisplay } from 'vuetify';
+const { smAndDown } = useDisplay();
 
 
 interface StateModel {
   selectedScans: Array<CombinedItem>; // 包含 data_missing 可选属性
   snackbar: SnackbarModel;
   headers: any[];
-  filter:Record<string,any>
+  currentPage: string|undefined;
+  filterDialog: boolean;
+  filter:FilterModel
   currentFilterValues: Array<string>;
+  sortDialog: boolean;
+  
 }
 
 const props = defineProps({
@@ -403,7 +218,7 @@ const props = defineProps({
     default: () => ({
       page: 1,
       pageSize: 50,
-      sortBy: []
+      sortBy: [{key: 'name', order: 'asc'}]
     })
   },
   loading: {
@@ -412,27 +227,36 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['deleteAllRecord', 'addToCleanup', 'update:scanParams','applyFilter']);
+const emit = defineEmits(['deleteAllRecord', 'addToCleanup', 'update:scanParams','applyFilter','applySort']);
+
 const filterItems = [{
   title:"路径",
-  value:"path"
-  },
-  { title:"下载器名称",
+  value:"path",
+  type:"icon",
+  label:"mdi-folder-arrow-left"
+  },  { title:"下载器名称",
     value:"client_name",
-  },
-  { title:"下载器类型",
+    type:"icon",
+    label:"mdi-download"
+  },{ title:"下载器类型",
     value:"client",
-  },
-  { title:"做种数",
+    type:"icon",
+    label:"mdi-download-circle"
+  },{ title:"做种数",
     value:"seeds_limit",
-  },
-  { title:"大小(MB)",
+    type:"icon",
+    label:"mdi-seed"
+  },{ title:"大小(MB)",
     value:"size_limit",
-  },
-   { title:"存活(小于)",
+    type:"icon",
+    label:"mdi-harddisk"
+  },{ title:"存活(小于)",
     value:"live_time",
+    type:"icon",
+    label:"mdi-clock-outline"
   },
 ]
+
 const state = reactive<StateModel>({
   selectedScans: [],
   snackbar: {
@@ -450,41 +274,34 @@ const state = reactive<StateModel>({
       { value: 'seeds', title: '做种数' ,align:"center",sortable: true},
       { value: 'size', title: '大小', sortable: true,align:"center", },
       { value: 'select', title: '',key:"data-table-select"}],
+  currentPage: undefined,
+  filterDialog: false,
   filter:{
     path: '',
     client_name: '',
     client: '',
+    seeds_limit_down:null,
+    seeds_limit_up:null,
     seeds_limit: [null,null],
+    size_limit_down:null,
+    size_limit_up:null,
     size_limit: [null,null],
     live_time:0,
   },
   currentFilterValues:["path"],
+  sortDialog: false,
 })
-// 获取过滤项的标题通过key(value)
-const getfilterTitleByKey = (key: string) => { 
+
+const dataListCardRef = ref();
+// 获取过滤项的属性通过key(value)
+const getfilterAttrByKey = (attr:string,key: string) => { 
   for (let i of filterItems) {
     if (i.value === key) {
-      return i.title;
+      return i[attr];
     }
   }
   return key;
 }
-
-// 下载器名称、下载器类型列表
-const allDownloaders = computed(() => {
-  let downloaderNames = new Set([
-    ...props.initialConfig.downloaders.system.map(d => d.name),
-    ...props.initialConfig.downloaders.custom.map(d => d.name)
-  ])
-  let downloaderTypes = new Set([
-    ...props.initialConfig.downloaders.system.map(d => d.type),
-    ...props.initialConfig.downloaders.custom.map(d => d.type)
-  ])
-  return {
-    names: Array.from(downloaderNames),
-    types: Array.from(downloaderTypes)
-  };
-});
 
 
 // 计算总数和缺失文件数量
@@ -505,6 +322,41 @@ const totalComputed = computed(() => {
   return  res.join(' | ');
 });
 
+// 是否被选中
+const isItemSelected = (item: CombinedItem): boolean => {
+  return state.selectedScans.some(scan => {
+      return scan.hash === item.hash;
+  });
+};
+
+// 计算全选状态
+const isSelectAll = computed(() => {
+  const visibleCount = props.scanRes.combinedList.length;
+  if (!dataListCardRef.value) return false;
+  // 只有当可见项目数量大于0且所有可见项目都被选中时，才是全选状态
+  const isAllSelected = visibleCount > 0 && props.scanRes.combinedList.every(item => isItemSelected(item));
+  return isAllSelected;
+});
+
+// 计算部分选择状态
+const isIndeterminate = computed(() => {
+  const selectedCount = state.selectedScans.length;
+  // 当有项目被选中但不是所有项目都被选中时，是部分选择状态
+  const isIndeterminate = selectedCount > 0 && !props.scanRes.combinedList.every(item => isItemSelected(item));
+  return isIndeterminate;
+});
+
+// 计算活跃筛选条件数量
+const activeFilterCount = computed(() => {
+  let count = 0;
+  Object.entries(state.filter).forEach(([key, value]) => {
+    if (isShowFilterTag(value,key)) {
+      count++;
+    }
+  });
+  return count;
+});
+
 // 消息通知
 const showNotification = (text, color = 'success')=> {
   state.snackbar.message = text;
@@ -512,28 +364,11 @@ const showNotification = (text, color = 'success')=> {
   state.snackbar.show = true;
 }
 
-const deleteAllRecord = () => {
-  state.selectedScans = [];
-  emit('deleteAllRecord');
-};
-const addToCleanup = () => {
-  // console.log("添加到待清理列表", state.selectedScans);
-  emit('addToCleanup', state.selectedScans);
-};
-
+// 计算总页数
 const totalPages = computed(() => {
      return Math.ceil(props.scanRes.total / props.scanParams.pageSize);
 });
 
-// 获取状态颜色
-const getStatusColor = (status: string) => {
-  let error_status = ['缺失源文件' , '错误' , '已停止' , '未知']
-  if (error_status.includes(status)) {
-    return 'error';
-  } else {
-    return 'success';
-  }
-};
 // 页码改变
 const handlePageChange = (newPage: number) => {
   emit('update:scanParams', {
@@ -551,43 +386,59 @@ const handlePageChange = (newPage: number) => {
        sort: props.scanParams.sortBy,
        changed:"pageSize"
      });
-   };
-// 排序改变
-const handleSortChange = (items:any)=>{
-  console.log("handleSortChange",items)
-  emit('update:scanParams', {
-    pageSize: props.scanParams.pageSize,
-    page: props.scanParams.page, // 切换每页数量后跳转到第一页
-    sort: items,
-    changed:"sort"
-  });
+};
+// 扫描参数改变
+const handleScanParamsChange = (newScanParams:any)=>{
+  emit('update:scanParams', newScanParams);
 }
+// 去跳转页码
+const goToPage = () =>{
+  
+  if (state.currentPage === undefined || state.currentPage === null) {
+    return;
+  }
+  let currentPageNum = parseInt(state.currentPage);
+  if (!currentPageNum) {
+    showNotification("请输入有效的页码", "error");
+    return;
+  }
+  if (currentPageNum < 1 || currentPageNum > totalPages.value) {
+    showNotification("页码超出范围", "error");
+    return;
+  }
+  handlePageChange(currentPageNum);
+}
+// 切换全选状态
+const toggleSelectAll = () => {
+  // 检查当前是否已经全选（基于实际选中状态，而不是数量比较）
+  const currentlyAllSelected = props.scanRes.combinedList.every(item => isItemSelected(item));
+  if (currentlyAllSelected) {
+    // 如果当前是全选状态，则取消全选
+    state.selectedScans = [];
+  } else {
+    // 如果当前不是全选状态，则全选
+    // 清空当前选中状态，然后添加所有可见项目
+    state.selectedScans = [];
+    props.scanRes.combinedList.forEach(item => {
+      state.selectedScans.push(item);
+    });
+  }
+  // 不需要手动更新selectAll状态，计算属性会自动处理
+};
+
 const clearSelectedScans = ()=>{
   state.selectedScans = [];
 }
 
-const _copyPath = async (path: string) => {
-  showNotification("完整路径已复制到剪贴板");
-  if (await copyPath(path)){
+// 路径复制结果
+const _copyPath = (isSuccess: boolean) => {
+  if (isSuccess){
     showNotification("完整路径已复制到剪贴板");
   }else{
     showNotification("复制路径失败","error");
   }
 };
 
-const availableColors = ['primary', 'secondary', 'success', 'info', 'warning', 'error', 'accent'];
-
-// 根据字符串生成颜色索引
-const getColorByString = (strs: string[]): string => {
-  let strsArray = strs.sort()
-  let _strs = strsArray.join("");
-  let hash = 0;
-  for (let i = 0; i < _strs.length; i++) {
-    hash = _strs.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash % availableColors.length);
-  return availableColors[index];
-};
 
 // 计算所选项目大小的总和，排除 data_missing 为 true 的项
 const selectedScansSize = computed(() => {
@@ -602,18 +453,23 @@ const selectedScansSize = computed(() => {
   }, 0))
 });
 
-const filterDialog = ref(false);
+// 切换筛选对话框的显示状态
 const toggleFilter = () => {
-  filterDialog.value = true;
+  state.filterDialog = !state.filterDialog;
 };
 
 //应用筛选
 const applyFilter = () => {
   // console.log(state.filter);
-  filterDialog.value = false;
+ state.filterDialog = false;
   emit('applyFilter', state.filter)
 };
 
+//应用排序
+const applySort = (sortOptionList: SortItem[])=>{
+  console.log("applySort",sortOptionList);
+  emit('applySort', sortOptionList)
+}
 // 删除筛选条件
 const deleteFilter = (name:string)=>{
   if (state.filter[name] instanceof Array){
@@ -621,11 +477,36 @@ const deleteFilter = (name:string)=>{
   }else {
     state.filter[name] = ''
   }
-  filterDialog.value = false;
+  state.filterDialog = false;
   emit('applyFilter', state.filter)
 };
+
+// filterChange 
+const filterChange = (filter:Object)=>{
+  if (filter instanceof Object){
+    for (let key in filter){
+      if (key in state.filter){
+         state.filter[key] = filter[key];
+          if (key.indexOf("_up") > -1){
+            let _key = key.replace("_up","")
+            state.filter[_key][1] = filter[key]
+          }
+          if (key.indexOf("_down") > -1){
+            let _key = key.replace("_down","")
+            state.filter[_key][0] = filter[key]
+          }
+        }
+      }
+  }
+}
+// 切换对话框的显示状态
+const toggleSort = () => {
+  state.sortDialog = !state.sortDialog;
+};
+
 // 是否显示筛选标签
-const isShowFilterTag=(value:any)=>{
+const isShowFilterTag=(value:any,key:string)=>{
+  if (!filterItems.some(item=>item.value === key)) return false;
   if (value instanceof Array && value.length === 2){
     return value[0] !==null && value[1] !== null && value[0] !== '' && value[1] !== '';
   }else if (typeof value === 'number'){
@@ -646,19 +527,12 @@ const formatFilterTag=(value:any,key:string="")=>{
   }
 }
 
-//格式化种子生存时间
-const formatCreatedTime = (time: string)=>{
-  if (time == "1970-01-01 08:00:00"){
-return ""
-  }
-  else{
-    return formatTimeSince(time)
-  }
-}
-
 defineExpose({
   clearSelectedScans,
-  
+  toggleFilter,
+  toggleSort,
+  getSelectedScans: () => state.selectedScans,
+
 })
 </script>
 <style scoped> 
@@ -672,6 +546,184 @@ defineExpose({
   & .name-text{
     margin-left: 8px;
     max-width: 35rem;
+  }
+}
+.w-100 {
+  width: 100% !important;
+}
+
+.title-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0; /* 允许内容收缩 */
+}
+
+.title-stats .v-chip {
+  font-size: 0.65rem;
+  height: 24px; /* 固定高度 */
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  flex-shrink: 0; /* 防止标签被压缩 */
+  white-space: nowrap; /* 不换行 */
+  min-width: fit-content; /* 根据内容调整最小宽度 */
+  padding: 2px 4px; /* 调整内边距 */
+}
+
+.title-stats .v-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.15);
+}
+
+.title-stats .v-chip .v-icon {
+  opacity: 0.9;
+}
+/* 加载状态样式 */
+.v-skeleton-loader {
+  margin-bottom: 16px;
+}
+
+/* 分页控件样式 */
+.border-top {
+  border-top: 1px solid rgba(var(--v-border-color), 0.1);
+}
+.v-pagination {
+  background-color: rgba(var(--v-theme-surface), 0.5);
+  border-radius: 4px;
+  padding: 2px;
+  min-height: auto;
+}
+.v-pagination .v-btn {
+  margin: 0 1px;
+  height: 28px;
+  min-width: 28px;
+}
+/* 筛选标签区域 - 紧凑彩色设计 */
+.filter-section-compact {
+  background-color: rgba(var(--v-theme-surface), 0.95);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(var(--v-border-color), 0.05);
+  margin-bottom: 12px;
+}
+
+.filter-chips-compact {
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-chip-compact {
+   display: flex;
+   align-items: center;
+   font-size: 0.75rem;
+   font-weight: 500;
+   color: rgba(var(--v-theme-on-surface), 0.87);
+   background-color: rgba(var(--v-theme-surface), 0.1);
+   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+   border-radius: 8px;
+   padding: 6px 12px;
+   min-height: 32px;
+   transition: all 0.2s ease;
+}
+
+ .filter-chip-compact:hover {
+   transform: translateY(-1px);
+   box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.15);
+   border-color: rgba(var(--v-theme-primary), 0.3);
+ }
+
+ .filter-chip-compact.filter-path {
+   background-color: rgba(99, 102, 241, 0.1);
+   border-color: rgba(99, 102, 241, 0.3);
+   color: rgba(99, 102, 241, 0.9);
+ }
+ 
+ .filter-chip-compact.filter-client_name {
+   background-color: rgba(168, 85, 247, 0.1);
+   border-color: rgba(168, 85, 247, 0.3);
+   color: rgba(168, 85, 247, 0.9);
+ }
+ 
+ .filter-chip-compact.filter-client {
+   background-color: rgba(236, 72, 153, 0.1);
+   border-color: rgba(236, 72, 153, 0.3);
+   color: rgba(236, 72, 153, 0.9);
+ }
+ 
+ .filter-chip-compact.filter-seeds_limit {
+   background-color: rgba(34, 197, 94, 0.1);
+   border-color: rgba(34, 197, 94, 0.3);
+   color: rgba(34, 197, 94, 0.9);
+ }
+ 
+ .filter-chip-compact.filter-size_limit {
+   background-color: rgba(59, 130, 246, 0.1);
+   border-color: rgba(59, 130, 246, 0.3);
+   color: rgba(59, 130, 246, 0.9);
+ }
+ 
+ .filter-chip-compact.filter-live_time {
+   background-color: rgba(245, 158, 11, 0.1);
+   border-color: rgba(245, 158, 11, 0.3);
+   color: rgba(245, 158, 11, 0.9);
+ }
+
+.filter-chip-compact .v-icon {
+  margin-right: 4px;
+  opacity: 0.8;
+}
+
+ .filter-chip-compact.filter-path .v-icon {
+   color: rgba(99, 102, 241, 0.9) !important;
+ }
+ 
+ .filter-chip-compact.filter-client_name .v-icon {
+   color: rgba(168, 85, 247, 0.9) !important;
+ }
+ 
+ .filter-chip-compact.filter-client .v-icon {
+   color: rgba(236, 72, 153, 0.9) !important;
+ }
+ 
+ .filter-chip-compact.filter-seeds_limit .v-icon {
+   color: rgba(34, 197, 94, 0.9) !important;
+ }
+ 
+ .filter-chip-compact.filter-size_limit .v-icon {
+   color: rgba(59, 130, 246, 0.9) !important;
+ }
+ 
+ .filter-chip-compact.filter-live_time .v-icon {
+   color: rgba(245, 158, 11, 0.9) !important;
+ }
+
+/* 空状态样式 */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.empty-state .v-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.go-page-append,.go-page-prepend{
+  /* font-size: 10px; */
+  opacity:1;
+  &:hover{
+    cursor: pointer;
+    opacity: 0.6;
+    transform: translateY(-2px) !important;
+    /* box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important; */
+    &::before {
+      left: 100%;
+    }
   }
 }
 </style>

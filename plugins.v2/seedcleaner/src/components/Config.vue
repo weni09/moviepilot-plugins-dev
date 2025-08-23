@@ -1,195 +1,307 @@
 <template>
-  <div class="plugin-common plugin-config">
+  <div class="plugin-config">
     <v-card flat class="rounded border">
-      <!-- 标题 -->
+      <!-- 标题区域 -->
       <v-card-title class="text-subtitle-1 d-flex align-center px-3 py-2 bg-primary-lighten-5">
-        <v-icon icon="mdi-cog" class="mr-2" color="primary" size="small"/>
-        <span>种子清理工</span>
-        <v-card-subtitle class="ml-2">配置页</v-card-subtitle>
-        <v-spacer />
-         <v-btn color="info" 
-         @click="emit('switch','page')" 
-         icon="mdi-view-dashboard" 
-         :disabled="state.saving" 
-         variant="tonal" 
-         size="small"
-         class="mr-4"
-         >
-          <v-icon icon="mdi-view-dashboard" size="small"></v-icon>
-          <v-tooltip activator="parent" location="top">详情页</v-tooltip>
+        <v-icon icon="mdi-cog" class="mr-2" color="primary" size="small" />
+        <span>种子清理工配置</span>
+        <v-spacer></v-spacer>
+        <div class="header-actions">
+        <v-btn
+          color="info"
+          @click="emit('switch','page')"
+          :disabled="state.saving"
+          variant="text"
+          size="small"
+          density="compact"
+          class="header-action-btn"
+        >
+          <template v-if="smAndDown">
+            <v-icon icon="mdi-view-dashboard" size="18" />
+          </template>
+          <template v-else>
+            <v-icon icon="mdi-view-dashboard" size="18" class="mr-1" />
+            <span>详情页</span>
+          </template>
         </v-btn>
-        <v-btn color="success" :disabled="state.saving" @click="saveFullConfig" :loading="state.saving" icon="mdi-content-save" variant="tonal" size="small"  class="mr-4">
-          <v-icon icon="mdi-content-save" size="small"/>
-          <v-tooltip activator="parent" location="top">保存配置</v-tooltip>
+        <v-btn
+          color="success"
+          :disabled="state.saving"
+          @click="saveFullConfig"
+          :loading="state.saving"
+          variant="text"
+          size="small"
+          density="compact"
+          class="header-action-btn"
+        >
+          <template v-if="smAndDown">
+            <v-icon icon="mdi-content-save" size="18" />
+          </template>
+          <template v-else>
+            <v-icon icon="mdi-content-save" size="18" class="mr-1" />
+            <span>保存配置</span>
+          </template>
         </v-btn>
-        <v-btn color="primary" @click="emit('close')" icon="mdi-close" :disabled="state.saving"  variant="tonal" size="small"  class="mr-4">
-          <v-icon icon="mdi-close" size="small" />
-          <v-tooltip activator="parent" location="top">关闭</v-tooltip>
+        <v-btn
+          color="grey"
+          @click="emit('close')"
+          :disabled="state.saving"
+          variant="text"
+          size="small"
+          density="compact"
+          class="header-action-btn"
+        >
+          <template v-if="smAndDown">
+            <v-icon icon="mdi-close" size="18" />
+          </template>
+          <template v-else>
+            <v-icon icon="mdi-close" size="18" class="mr-1" />
+            <span>关闭</span>
+          </template>
         </v-btn>
+        </div>
       </v-card-title>
-
+      
       <v-card-text class="px-3 py-2">
         <v-form ref="formRef" @submit.prevent="saveFullConfig">
-          <v-row no-gutters>
-            <!-- 左边配置 -->
-            <v-col cols="6" class="pr-4">
-              <v-card flat class="rounded border config-card mb-4">
-                <v-card-text class="px-3 py-2">
-                   <!-- 系统下载器改为下拉框 -->
-                 <v-select
-                    v-model="state.selectedSystemDownloaderNames"
-                    :items="state.systemDownloader.map(d => d.name)"
-                    label="系统下载器"
+          <!-- 系统下载器选择卡片 -->
+          <v-card flat class="rounded mb-3 border config-card">
+            <v-card-title class="text-caption d-flex align-center px-3 py-2 bg-primary-lighten-5">
+              <v-icon icon="mdi-download" class="mr-2" color="primary" size="small" />
+              <span>选择系统下载器</span>
+            </v-card-title>
+            <v-card-text class="px-3 py-2">
+              <v-select
+                v-model="state.selectedSystemDownloaderNames"
+                :items="state.systemDownloader.map(d => d.name)"
+                label="系统下载器"
+                variant="outlined"
+                density="compact"
+                hint="选择MoviePilot中已配置的下载器，可多选。"
+                persistent-hint
+                prepend-inner-icon="mdi-download-network"
+                multiple
+                chips
+                clearable
+                :disabled="state.saving"
+                @update:model-value="handleSystemDownloadersChange"
+              />
+            </v-card-text>
+          </v-card>
+
+          <!-- 自定义下载器设置卡片 -->
+          <v-card flat class="rounded mb-3 border config-card">
+            <v-card-title class="text-caption d-flex align-center px-3 py-2 bg-primary-lighten-5">
+              <v-icon icon="mdi-plus-circle" class="mr-2" color="primary" size="small" />
+              <span>自定义下载器</span>
+            </v-card-title>
+            <v-card-text class="px-3 py-2">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="state.customDownloader.name"
+                    label="名称"
                     variant="outlined"
                     density="compact"
-                    class="mb-3 text-caption"
-                    hint="MoviePilot系统配置中的下载器,可多选"
-                    multiple
-                    chips
-                    clearable
-                    @update:model-value="handleSystemDownloadersChange"
+                    hint="自定义下载器名称，不能与系统下载器名称重复。"
+                    persistent-hint
+                    @blur="validateName(state.customDownloader.name)"
+                    :rules="[validateName]"
+                    required
+                    prepend-inner-icon="mdi-tag"
+                    :disabled="state.saving"
                   />
-                </v-card-text>
-              </v-card>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-select
+                    v-model="state.customDownloader.type"
+                    :items="['qbittorrent', 'transmission']"
+                    label="下载器类型"
+                    variant="outlined"
+                    density="compact"
+                    hint="选择下载器类型，目前支持qbittorrent和transmission。"
+                    persistent-hint
+                    prepend-inner-icon="mdi-download"
+                    :disabled="state.saving"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="state.customDownloader.host"
+                    label="下载器地址"
+                    hint="下载器地址，带http://或https://"
+                    persistent-hint
+                    variant="outlined"
+                    density="compact"
+                    prepend-inner-icon="mdi-web"
+                    :disabled="state.saving"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model.number="state.customDownloader.port"
+                    label="端口"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    hint="下载器访问端口，默认443。"
+                    persistent-hint
+                    prepend-inner-icon="mdi-ethernet"
+                    :disabled="state.saving"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="state.customDownloader.username"
+                    label="用户名"
+                    variant="outlined"
+                    density="compact"
+                    hint="下载器访问用户名。"
+                    persistent-hint
+                    prepend-inner-icon="mdi-account"
+                    :disabled="state.saving"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="state.customDownloader.password"
+                    label="密码"
+                    variant="outlined"
+                    density="compact"
+                    :type="showPassword ? 'text' : 'password'"
+                    hint="下载器访问密码。"
+                    persistent-hint
+                    prepend-inner-icon="mdi-lock"
+                    :disabled="state.saving"
+                  >
+                    <template #append-inner>
+                      <v-icon
+                        :icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                        :size="16"
+                        class="clickable-icon"
+                        @click="showPassword = !showPassword"
+                      />
+                    </template>
+                  </v-text-field>
+                </v-col>
+              </v-row>
+              <v-card-actions class="px-0 pt-2 d-flex justify-end">
+                <v-btn 
+                  color="primary"
+                  prepend-icon="mdi-plus-circle" 
+                  @click="addCustomDownloader" 
+                  variant="tonal"
+                  size="small"
+                  :disabled="state.saving"
+                >
+                  添加到下载器列表
+                </v-btn>
+              </v-card-actions>
+            </v-card-text>
+          </v-card>
 
-                  <!-- 自定义下载器 -->
-                  <v-card flat class="mt-4 rounded border config-card">
-                    <v-card-title class="text-caption px-3 py-2 bg-primary-lighten-5">
-                      自定义下载器
-                    </v-card-title>
-                    <v-card-text class="px-3 py-2">
-                      <v-text-field
-                        v-model="state.customDownloader.name"
-                        label="名称"
-                        variant="outlined"
-                        density="compact"
-                        @blur="validateName(state.customDownloader.name)"
-                        :rules="[validateName]"
-                        required
-                        class="mb-2 text-caption"
+          <!-- 下载器列表卡片 -->
+          <v-card flat class="rounded mb-3 border config-card">
+            <v-card-title class="text-caption d-flex align-center px-3 py-2 bg-primary-lighten-5">
+              <v-icon icon="mdi-format-list-bulleted" class="mr-2" color="primary" size="small" />
+              <span>下载器列表</span>
+            </v-card-title>
+            <v-card-text class="px-3 py-2">
+              <div class="downloader-list">
+                <v-list lines="two" density="compact">
+                  <v-list-item v-for="(item, index) in allDownloaders" :key="index" class="mb-1">
+                    <template #prepend>
+                      <v-icon 
+                        :icon="getDownloaderIcon(item)" 
+                        :style="{ color: getDownloaderColor(item) }"
+                        size="small"
                       />
-                      <v-select
-                        v-model="state.customDownloader.type"
-                        :items="['qbittorrent', 'transmission']"
-                        label="类型"
-                        variant="outlined"
-                        density="compact"
-                        class="mb-2 text-caption"
-                      />
-                      <v-text-field
-                        v-model="state.customDownloader.host"
-                        label="下载器地址 (带http://或https://)"
-                        variant="outlined"
-                        density="compact"
-                        class="mb-2 text-caption"
-                      />
-                      <v-text-field
-                        v-model.number="state.customDownloader.port"
-                        label="端口"
-                        type="number"
-                        variant="outlined"
-                        density="compact"
-                        class="mb-2 text-caption"
-                      />
-                      <v-text-field
-                        v-model="state.customDownloader.username"
-                        label="用户名"
-                        variant="outlined"
-                        density="compact"
-                        class="mb-2 text-caption"
-                      />
-                      <v-text-field
-                        v-model="state.customDownloader.password"
-                        label="密码"
-                        variant="outlined"
-                        density="compact"
-                        type="password"
-                        class="mb-2 text-caption"
-                      />
-                    </v-card-text>
-                    <v-card-actions class="px-3 pb-2 d-flex justify-end">
-                      <v-btn color="primary"
-                       prepend-icon="mdi-plus-circle" 
-                       @click="addCustomDownloader" 
-                       variant="plain">添加到下载器列表</v-btn>
-                    </v-card-actions>
-                  </v-card>
-            </v-col>
-
-            <!-- 右边下载器列表 -->
-            <v-col cols="6">
-              <v-card flat class="rounded border config-card downloader-list">
-                <v-card-title class="text-caption px-3 py-2 bg-primary-lighten-5">
-                  下载器列表
-                </v-card-title>
-                <v-card-text class="px-3 py-2">
-                  <v-list dense lines="one">
-                    <v-list-item v-for="(item, index) in allDownloaders" :key="index">
-                      <v-list-item-title>
-                         <v-chip :color="item._type=='system'?'primary':'info'"
-                      size="small" text-color="white">{{item._type=='system'?'系统':'自定义'}}</v-chip>
-                        {{ item.name }} ({{ item.type }})</v-list-item-title>
-                      <v-list-item-subtitle>{{ item.host }}:{{ item.port }}</v-list-item-subtitle>
-                      <template #append>
+                    </template>
+                    <v-list-item-title class="d-flex align-center">
+                      <v-chip 
+                        :color="item._type === 'system' ? 'primary' : 'info'"
+                        size="x-small" 
+                        text-color="white"
+                        class="mr-2"
+                      >
+                        {{ item._type === 'system' ? '系统' : '自定义' }}
+                      </v-chip>
+                      <span class="text-subtitle-2">{{ item.name }}</span>
+                    </v-list-item-title>
+                    <v-list-item-subtitle class="text-caption">
+                      {{ item.host }}:{{ item.port }}
+                    </v-list-item-subtitle>
+                    <template #append>
+                      <div class="d-flex align-center">
                         <v-btn
                           v-if="item._type === 'custom'"
                           color="info"
                           icon="mdi-pencil"
                           size="x-small"
+                          variant="text"
                           @click="editCustom(item)"
-                        ></v-btn>
+                          :disabled="state.saving"
+                        />
                         <v-btn
-                          class="ml-2"
+                          color="error"
                           icon="mdi-delete"
                           size="x-small"
+                          variant="text"
                           @click="deleteDownloader(index, item._type)"
-                        ></v-btn>
-                      </template>
-                    </v-list-item>
-                  </v-list>
-                </v-card-text>
-              </v-card>
+                          :disabled="state.saving"
+                        />
+                      </div>
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </div>
+            </v-card-text>
+          </v-card>
 
-              <!-- 新增路径设置卡片 -->
-                <v-card flat class="rounded border config-card mt-2">
-                  <v-card-title class="text-caption px-3 py-2 bg-primary-lighten-5">
-                    路径设置
-                  </v-card-title>
-                  <v-card-text class="px-3 py-2">
-                    <!-- 排除目录 -->
-                    <v-text-field
-                      v-model="editableConfig.exclude_paths"
-                      label="排除的目录"
-                      hint="用于查找缺失种子的源文件,多个用';'隔开,一般为软/硬链接目标路径"
-                      persistent-hint
-                      prepend-inner-icon="mdi-cancel"
-                      variant="outlined"
-                      density="compact"
-                      class="mb-3 text-caption"
-                    />
-                    <!-- 额外目录 -->
-                    <v-text-field
-                      v-model="editableConfig.extra_dir_paths"
-                      label="额外的目录"
-                      hint="用于查找缺失种子的源文件,多个用';'隔开,其不是现有下载器的保存目录"
-                      persistent-hint
-                      prepend-inner-icon="mdi-folder-open"
-                      variant="outlined"
-                      density="compact"
-                      class="text-caption"
-                    />
-                  </v-card-text>
-                   <v-card-text class="d-flex align-center px-3 py-1">
-                    <v-icon icon="mdi-information" color="error" class="mr-2" size="small"></v-icon>
-                    <span class="text-caption">
-                      如果在docker容器中，请确保下载器中的保存(下载/源文件)路径存在于MoviePilot容器中！
-                    </span>
-                  </v-card-text>
-                </v-card>
-            </v-col>
-          </v-row>
+          <!-- 路径设置卡片 -->
+          <v-card flat class="rounded mb-3 border config-card">
+            <v-card-title class="text-caption d-flex align-center px-3 py-2 bg-primary-lighten-5">
+              <v-icon icon="mdi-folder-cog" class="mr-2" color="primary" size="small" />
+              <span>路径设置</span>
+            </v-card-title>
+            <v-card-text class="px-3 py-2">
+              <v-text-field
+                v-model="editableConfig.exclude_paths"
+                label="排除的目录"
+                hint="用于查找缺失种子的源文件，多个用';'隔开，一般为软/硬链接目标路径"
+                persistent-hint
+                prepend-inner-icon="mdi-cancel"
+                variant="outlined"
+                density="compact"
+                :disabled="state.saving"
+                class="mb-3"
+              />
+              <v-text-field
+                v-model="editableConfig.extra_dir_paths"
+                label="额外的目录"
+                hint="用于查找缺失种子的源文件，多个用';'隔开，其不是现有下载器的保存目录"
+                persistent-hint
+                prepend-inner-icon="mdi-folder-open"
+                variant="outlined"
+                density="compact"
+                :disabled="state.saving"
+              />
+            </v-card-text>
+          </v-card>
+
+          <!-- 帮助信息卡片 -->
+          <v-card flat class="rounded mb-3 border config-card">
+            <v-card-text class="d-flex align-center px-3 py-2">
+              <v-icon icon="mdi-information" color="warning" class="mr-2" size="small"></v-icon>
+              <span class="text-caption">
+                如果在docker容器中，请确保下载器中的保存(下载/源文件)路径存在于MoviePilot容器中！
+              </span>
+            </v-card-text>
+          </v-card>
         </v-form>
       </v-card-text>
+      
+      
     </v-card>
 
     <!-- 提示框 -->
@@ -236,16 +348,20 @@ const state = reactive<StateModel>({
   systemDownloader: [],
   selectedSystemDownloaderNames: [],
   customDownloader: {
-    name: '',
+    name: '自定义下载器1',
     type: 'qbittorrent',
-    host: '',
+    host: 'http://127.0.0.1',
     port: 443,
-    username: '',
-    password: ''
+    username: 'admin',
+    password: 'adminadmin'
   },
 });
 
 const formRef = ref();
+// 响应式断点：小屏幕（含）仅显示图标
+import { useDisplay } from 'vuetify';
+const { smAndDown } = useDisplay();
+const showPassword = ref(false);
 
 // 数据模型
 const editableConfig = reactive({
@@ -265,6 +381,37 @@ const allDownloaders = computed(() => {
     ...editableConfig.downloaders.custom.map(d => ({ ...d, _type: 'custom' }))
   ];
 });
+
+// 列表图标映射（大小写不敏感）。
+// 说明：某些 MDI 图标（如 mdi-qbittorrent）在不同版本包里可能不存在，为保证兼容，统一映射到常见可用图标。
+function getDownloaderIcon(item: any) {
+  const type = (item?.type || '').toString().toLowerCase();
+  if (type.includes('qbittorrent') || type === 'qbittorrent' || type === 'qbit') {
+    // 使用通用的下载图标，避免因缺少特定品牌图标导致的空 svg/path
+    return 'mdi-download';
+  }
+  if (type.includes('transmission') || type === 'transmission') {
+    return 'mdi-download-network';
+  }
+  // 系统下载器但无类型时也给到一个稳定图标
+  if (item?._type === 'system' && !type) {
+    return 'mdi-download-network';
+  }
+  return 'mdi-download';
+}
+
+// 图标颜色映射：Qbittorrent -> 蓝色，Transmission -> 红色，其余沿用原有逻辑（系统紫色、其它信息蓝）
+function getDownloaderColor(item: any) {
+  const type = (item?.type || '').toString().toLowerCase();
+  if (type.includes('qbittorrent') || type === 'qbittorrent' || type === 'qbit') {
+    return '#64B5F6'; // blue-300 浅蓝
+  }
+  if (type.includes('transmission') || type === 'transmission') {
+    return '#E57373'; // red-300 浅红
+  }
+  // 保底：系统下载器用主题primary，其它用info（使用接近主题的hex以避免主题变量解析为灰色）
+  return item?._type === 'system' ? '#1976D2' : '#0288D1';
+}
 
 // 名称验证（不能重复）
 function validateName(value: string) {
@@ -315,9 +462,10 @@ function addCustomDownloader() {
     alert('请填写所有必填字段');
     return;
   }
-  if (!newDl.host.startsWith("http://") && !newDl.host.startsWith("https://)")){
+  const host = String(newDl.host).trim();
+  if (!(host.startsWith('http://') || host.startsWith('https://'))){
     alert('请填写正确的下载器地址: http:// 或 https:// 开头');
-    return
+    return;
   }
   const exists = editableConfig.downloaders.custom.some(d => d.name === newDl.name);
   if (exists) {
@@ -416,6 +564,7 @@ onMounted(() => {
 
 <style scoped>
 .plugin-config {
+  max-width: 80rem;
   margin: 0 auto;
   padding: 0.5rem;
 }
@@ -429,8 +578,8 @@ onMounted(() => {
 }
 
 .config-card {
-  background-image: linear-gradient(to right, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.95)),
-  repeating-linear-gradient(45deg, rgba(var(--v-theme-primary), 0.03), rgba(var(--v-theme-primary), 0.03) 10px, transparent 10px, transparent 20px);
+  background-image: linear-gradient(to right, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.95)), 
+                    repeating-linear-gradient(45deg, rgba(var(--v-theme-primary), 0.03), rgba(var(--v-theme-primary), 0.03) 10px, transparent 10px, transparent 20px);
   background-attachment: fixed;
   box-shadow: 0 1px 2px rgba(var(--v-border-color), 0.05) !important;
   transition: all 0.3s ease;
@@ -439,10 +588,12 @@ onMounted(() => {
 .config-card:hover {
   box-shadow: 0 3px 6px rgba(var(--v-border-color), 0.1) !important;
 }
-.downloader-list{
-  max-height: 17rem;
-  overflow-y: scroll;
+
+.downloader-list {
+  max-height: 20rem;
+  overflow-y: auto;
 }
+
 .setting-item {
   border-radius: 8px;
   transition: all 0.2s ease;
@@ -459,9 +610,25 @@ onMounted(() => {
   margin-right: -8px;
 }
 
-.text-subtitle-1 {
-  font-size: 1.1rem !important;
+.text-subtitle-2 {
+  font-size: 14px !important;
   font-weight: 500;
   margin-bottom: 2px;
+}
+
+.header-actions {
+  display: inline-flex;
+  gap: 4px; /* 更小的按钮间距 */
+  align-items: center;
+}
+
+.header-action-btn {
+  min-width: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.clickable-icon {
+  cursor: pointer;
 }
 </style>

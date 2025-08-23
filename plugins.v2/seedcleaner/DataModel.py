@@ -39,6 +39,11 @@ class FilterModel(BaseModel):
     live_time: int = 0  # 单位默认:天
 
 
+class SortItem(BaseModel):
+    key: str
+    order: str
+
+
 class SearchModel(BaseModel):
     missingOptions: MissingOptions
     auxOption: str = "all"
@@ -48,7 +53,7 @@ class SearchModel(BaseModel):
     name: str = ""
     page: int = 1
     limit: int = 50
-    sortBy: Tuple[str, str] = ("name", "asc")
+    sortBy: List[SortItem] = []
     filter: FilterModel
 
 

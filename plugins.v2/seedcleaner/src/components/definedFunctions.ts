@@ -1,9 +1,6 @@
 
 import {trackerMapping} from "./trackerMapping";
 
-// Define Anchor type locally if needed
-type Anchor = 'top' | 'bottom' | 'left' | 'right' | 'center';
-
 export const PLUGIN_ID = "SeedCleaner"
 export const ONLY_TORRENT = "only_torrent" //仅种子
 export const ONLY_DATA = "only_data" //仅数据
@@ -78,7 +75,7 @@ export const mapTrackers = (trackers: string[]): string[] => {
   });
 };
 
-
+// 字符串格式化:value为0返回空
 const getStrUnit = (value:number,unit:string)=>{
   if (value!=0){
     return value.toFixed(0)+unit
@@ -86,6 +83,7 @@ const getStrUnit = (value:number,unit:string)=>{
     return ""
   }
 }
+// 时长计算及格式化
 export function formatTimeSince(_targetTime: string|Date): string {
   // 解析目标时间
     let targetTime: Date;
@@ -146,8 +144,39 @@ export function formatTimeSince(_targetTime: string|Date): string {
 }
 
 
+// 获取状态颜色
+export const getStatusColor = (status: string) => {
+  let error_status = ['缺失源文件' , '错误' , '已停止' , '未知']
+  if (error_status.includes(status)) {
+    return 'error';
+  } else {
+    return 'success';
+  }
+};
 
 
+const availableColors = ['primary','#E91E63','#FFC107','#03A9F4','success','#3F51B5', 'info', 'warning', '#F44336', '#009688'];
+// 根据字符串生成颜色索引
+export const getColorByString = (strs: string[]): string => {
+  let strsArray = strs.sort()
+  let _strs = strsArray.join("");
+  let hash = 0;
+  for (let i = 0; i < _strs.length; i++) {
+    hash = _strs.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash % availableColors.length);
+  return availableColors[index];
+};
+// 获取随机颜色
+export const getRandomColor = (num: number) => {
+  const index = Math.floor(num % availableColors.length);
+  return availableColors[index];
+};
+
+
+
+// Define Anchor type locally if needed
+type Anchor = 'top' | 'bottom' | 'left' | 'right' | 'center';
 
 export interface ApiRequest {
   get: <T>(url: string, config?: any) => Promise<T>;
@@ -219,14 +248,18 @@ export interface DownloaderModel {
   custom: DownloaderInfoModel[];
 }
 
-export type SortItem = { key: string, order?: boolean | 'asc' | 'desc' }
+export type SortItem = { key: string, order: null| boolean | 'asc' | 'desc' }
 
 
 export interface FilterModel{
   path: string
   client_name:string
   client:string
+  seeds_limit_down:number|null
+  seeds_limit_up:number|null
   seeds_limit:Array<number|null>
+  size_limit_down:number|null
+  size_limit_up:number|null
   size_limit:Array<number|null>
   live_time:number
 }

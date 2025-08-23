@@ -1,6 +1,6 @@
 import axios from 'axios'
 import session from './session'
-const BASE_URL='http://localhost:3001/api/v1'
+const BASE_URL='http://192.168.1.121:3001/api/v1'
 const USERNAME = 'admin'
 const PASSWD = 'test123456'
 // 创建 request 实例，支持 get/post/put/delete
