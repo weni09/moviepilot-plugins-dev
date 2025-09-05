@@ -42,7 +42,7 @@
           :size="'small'"
           prev-icon="mdi-arrow-left-circle"
           next-icon="mdi-arrow-right-circle"
-          :density="smAndDown?'compact':'comfortable'"
+          :density="'comfortable'"
           :total-visible="smAndDown?1:7"
           :class="[smAndDown?'ml-1':'ml-2']"
           :elevation="5"
@@ -55,7 +55,7 @@
           hide-details
           :size="smAndDown?'x-small':'small'"
           :label="`共 ${ totalPages } 页`"
-          :max-width="smAndDown?100:130"
+          :max-width="smAndDown?120:145"
           v-model="state.currentPage"
           >
           <template #prepend-inner>

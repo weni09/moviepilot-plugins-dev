@@ -24,9 +24,9 @@
               class="flex-grow-1"
             >
               <!-- 卡片头部 - 横向布局 -->
-              <div class="card-header-horizontal pa-2">
+              <div class="card-header-horizontal pa-1">
                  <div class="d-flex align-center justify-space-between mb-2">
-                   <v-row class="d-flex align-center" gutters="no-gutters">
+                   <v-row class="d-flex align-center ma-0" gutters="no-gutters">
                     <v-col :cols="1" class="px-0 py-0">
                      <v-checkbox 
                        :model-value="props.selectedScans"
@@ -34,6 +34,7 @@
                        :value="item" 
                        hide-details
                        @click.stop
+                       density="compact"
                        size="x-small"
                      />
                      </v-col>
@@ -45,6 +46,7 @@
                       <v-btn
                         size="x-small"
                         variant="text"
+                        density="compact"
                         color="primary"
                         @click.stop="_copyPath(item.path)"
                         icon="mdi-content-copy"/>
@@ -60,7 +62,7 @@
                 <v-chip
                     :color="item.hasOwnProperty('client') && item.client === 'transmission' ? '#E91E63' : 'info'"
                     size="x-small"
-                    text-color="white"
+                    variant="tonal"
                     v-if="item.hasOwnProperty('client') && item.client"
                     >
                     {{ item.client === 'transmission' ? 'TR' : 'QB' }}
@@ -68,8 +70,8 @@
                   <v-chip
                     :color="getRandomColor(index)"
                     size="x-small"
-                    text-color="white"
                     class="ml-1"
+                    variant="tonal"
                   >
                     {{ item.hash.toUpperCase() }}
                   </v-chip>
@@ -98,11 +100,11 @@
                     <span class="text-caption">{{ item.type === 'torrent' ? `${item.seeds || 0}`:'无'}}</span>
                   </div>
                   <div class="info-item">
-                    <v-icon size="14" color="cyan" class="mr-1">mdi-folder</v-icon>
+                    <v-icon size="14" color="#00BCD4" class="mr-1">mdi-folder</v-icon>
                     <span class="text-caption text-truncate" :title="item.path">{{ item.path }}</span>
                   </div>
                   <div class="info-item">
-                    <v-icon size="14" color="teal" class="mr-1">mdi-download</v-icon>
+                    <v-icon size="14" color="#009688" class="mr-1">mdi-download</v-icon>
                     <span class="text-caption text-truncate">{{ `${item.type == 'torrent'?item.client_name:'-' }` }}</span>
                   </div>
                   <div class="info-item">
